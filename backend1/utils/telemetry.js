@@ -23,8 +23,8 @@ function analyzeObstacleProximity(path, grid) {
   // 8 yönlü komşuluk (düz + çapraz)
   const neighbors = [
     [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],           [0, 1],
-    [1, -1],  [1, 0],  [1, 1],
+    [0, -1], [0, 1],
+    [1, -1], [1, 0], [1, 1],
   ];
 
   const dangerZones = [];
@@ -117,7 +117,9 @@ function calculateTelemetry(astarResult, grid) {
   // 1. BATARYA TÜKETİMİ
   // ─────────────────────────────────────
   // Formül: (totalCost * 0.7) + (diagonal çapraz adımlar * 0.3)
-  const batteryPercent = parseFloat(((totalCost * 0.7) + (diagonalCount * 0.3)).toFixed(1));
+  const rawBatteryPercent = (totalCost * 0.7) + (diagonalCount * 0.3);
+  // Rover batarya kapasitesi %100 ile sınırlandırılır.
+  const batteryPercent = parseFloat(Math.min(100, rawBatteryPercent).toFixed(1));
   const batteryUsage = `%${batteryPercent}`;
 
   // ─────────────────────────────────────

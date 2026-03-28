@@ -60,10 +60,18 @@ router.post('/plan-route', async (req, res) => {
 
         // ── Gemini AI Analiz Raporu ──────────────
         const aiReport = await generateMissionReport({
+            startNode,
+            targetNode,
+            totalCost: result.totalCost,
             batteryUsage: telemetry.batteryUsage,
             riskScore: telemetry.riskScore,
             stepCount: result.stats.stepCount,
             slopeCount: result.stats.slopeCount,
+            diagonalCount: result.stats.diagonalCount,
+            slopeRatio: telemetry.riskDetails?.slopeRatio,
+            dangerRatio: telemetry.riskDetails?.dangerRatio,
+            dangerNearSteps: telemetry.summary?.obstacleNearSteps,
+            status: telemetry.status,
             craterMap
         });
 
@@ -140,10 +148,17 @@ router.post('/plan-multi-route', async (req, res) => {
 
         // ── Gemini AI Analiz Raporu ──────────────
         const aiReport = await generateMissionReport({
+            waypoints,
+            totalCost: result.totalCost,
             batteryUsage: telemetry.batteryUsage,
             riskScore: telemetry.riskScore,
             stepCount: result.stats.stepCount,
             slopeCount: result.stats.slopeCount,
+            diagonalCount: result.stats.diagonalCount,
+            slopeRatio: telemetry.riskDetails?.slopeRatio,
+            dangerRatio: telemetry.riskDetails?.dangerRatio,
+            dangerNearSteps: telemetry.summary?.obstacleNearSteps,
+            status: telemetry.status,
             legCount: result.stats.legCount,
             craterMap
         });
