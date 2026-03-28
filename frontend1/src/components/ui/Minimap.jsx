@@ -12,18 +12,23 @@ export default function Minimap({
     isRoverFocused = false,
     onToggleGrid,
     onToggleRoverFocus,
+    roverPath = [],
+    roverPosition = [0, 0, 0],
 }) {
     const canvasRef = useRef(null)
 
-    // Render terrain heightmap when map changes
+    // Render whole minimap (Terrain + Grid + Craters + Path + Rover)
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
         const ctx = canvas.getContext('2d')
+        ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE)
+        
         const img = ctx.createImageData(MAP_SIZE, MAP_SIZE)
         const profile = getMapProfile(selectedMap)
         const [cr, cg, cb] = profile.colorBase
 
+        // 1. Terrain Heightmap
         for (let py = 0; py < MAP_SIZE; py++) {
             for (let px = 0; px < MAP_SIZE; px++) {
                 const worldX = (px / MAP_SIZE - 0.5) * WORLD_SPAN
@@ -42,26 +47,21 @@ export default function Minimap({
                 img.data[idx + 3] = 255
             }
         }
-
         ctx.putImageData(img, 0, 0)
 
+        // 2. Grid Lines
         if (isGridEnabled) {
             ctx.strokeStyle = 'rgba(0, 242, 255, 0.12)'
             ctx.lineWidth = 0.7
             for (let i = 0; i <= MAP_SIZE; i += 16) {
                 ctx.beginPath()
-                ctx.moveTo(i + 0.5, 0)
-                ctx.lineTo(i + 0.5, MAP_SIZE)
-                ctx.stroke()
-
+                ctx.moveTo(i + 0.5, 0); ctx.lineTo(i + 0.5, MAP_SIZE); ctx.stroke()
                 ctx.beginPath()
-                ctx.moveTo(0, i + 0.5)
-                ctx.lineTo(MAP_SIZE, i + 0.5)
-                ctx.stroke()
+                ctx.moveTo(0, i + 0.5); ctx.lineTo(MAP_SIZE, i + 0.5); ctx.stroke()
             }
         }
 
-        // Draw craters as subtle circles
+        // 3. Craters
         ctx.strokeStyle = 'rgba(0, 242, 255, 0.15)'
         ctx.lineWidth = 0.8
         for (const c of profile.craters) {
@@ -73,36 +73,59 @@ export default function Minimap({
             ctx.stroke()
         }
 
-        // Draw rover path
-        const pathPoints = [
-            [0.15, 0.85], [0.22, 0.72], [0.30, 0.60],
-            [0.42, 0.52], [0.55, 0.45], [0.65, 0.35],
-            [0.78, 0.25], [0.85, 0.18],
-        ]
-        ctx.strokeStyle = 'rgba(0, 242, 255, 0.4)'
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([4, 4])
+        // 4. Actual Rover Path
+        if (roverPath && roverPath.length >= 2) {
+            ctx.strokeStyle = 'rgba(0, 242, 255, 0.5)'
+            ctx.lineWidth = 1.8
+            ctx.setLineDash([5, 3])
+            ctx.beginPath()
+            roverPath.forEach(([wx, , wz], i) => {
+                const px = (wx / WORLD_SPAN + 0.5) * MAP_SIZE
+                const py = (wz / WORLD_SPAN + 0.5) * MAP_SIZE
+                if (i === 0) ctx.moveTo(px, py)
+                else ctx.lineTo(px, py)
+            })
+            ctx.stroke()
+            ctx.setLineDash([])
+
+            // Markers for Start and End
+            const [sx, , sz] = roverPath[0]
+            const [ex, , ez] = roverPath[roverPath.length - 1]
+            
+            ctx.fillStyle = '#00f2ff'
+            ctx.beginPath()
+            ctx.arc((sx/WORLD_SPAN+0.5)*MAP_SIZE, (sz/WORLD_SPAN+0.5)*MAP_SIZE, 3, 0, Math.PI*2)
+            ctx.fill()
+
+            ctx.fillStyle = '#28ff78'
+            ctx.beginPath()
+            ctx.arc((ex/WORLD_SPAN+0.5)*MAP_SIZE, (ez/WORLD_SPAN+0.5)*MAP_SIZE, 3.5, 0, Math.PI*2)
+            ctx.fill()
+        }
+
+        // 5. Rover Live Marker
+        const rx = (roverPosition[0] / WORLD_SPAN + 0.5) * MAP_SIZE
+        const ry = (roverPosition[2] / WORLD_SPAN + 0.5) * MAP_SIZE
+        
+        // Glow effect
+        const grad = ctx.createRadialGradient(rx, ry, 0, rx, ry, 8)
+        grad.addColorStop(0, 'rgba(0, 242, 255, 0.6)')
+        grad.addColorStop(1, 'rgba(0, 242, 255, 0)')
+        ctx.fillStyle = grad
         ctx.beginPath()
-        pathPoints.forEach(([x, y], i) => {
-            const px = x * MAP_SIZE, py = y * MAP_SIZE
-            if (i === 0) ctx.moveTo(px, py)
-            else ctx.lineTo(px, py)
-        })
+        ctx.arc(rx, ry, 8, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Core dot
+        ctx.fillStyle = '#ffffff'
+        ctx.beginPath()
+        ctx.arc(rx, ry, 2.5, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = '#00f2ff'
+        ctx.lineWidth = 1
         ctx.stroke()
-        ctx.setLineDash([])
-
-        // Start & end markers
-        ctx.fillStyle = 'rgba(0, 242, 255, 0.9)'
-        ctx.beginPath()
-        ctx.arc(pathPoints[0][0] * MAP_SIZE, pathPoints[0][1] * MAP_SIZE, 3, 0, Math.PI * 2)
-        ctx.fill()
-
-        ctx.fillStyle = 'rgba(40, 255, 120, 0.9)'
-        ctx.beginPath()
-        const last = pathPoints[pathPoints.length - 1]
-        ctx.arc(last[0] * MAP_SIZE, last[1] * MAP_SIZE, 3, 0, Math.PI * 2)
-        ctx.fill()
-    }, [selectedMap, isGridEnabled])
+        
+    }, [selectedMap, isGridEnabled, roverPath, roverPosition])
 
     return (
         <motion.div
@@ -121,31 +144,21 @@ export default function Minimap({
             </div>
 
             {/* Canvas */}
-            <canvas
-                ref={canvasRef}
-                width={MAP_SIZE}
-                height={MAP_SIZE}
-                style={{
-                    width: MAP_SIZE,
-                    height: MAP_SIZE,
-                    borderRadius: 6,
-                    border: '1px solid rgba(0, 242, 255, 0.12)',
-                    imageRendering: 'pixelated',
-                }}
-            />
-
-            <div
-                className="pointer-events-none absolute"
-                style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: '#00f2ff',
-                    boxShadow: '0 0 8px rgba(0,242,255,0.9), 0 0 16px rgba(0,242,255,0.4)',
-                    left: 8 + MAP_SIZE * 0.15,
-                    top: 22 + MAP_SIZE * 0.85,
-                }}
-            />
+            <div className="relative overflow-hidden rounded-md border border-cyan-400/20 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
+                <canvas
+                    ref={canvasRef}
+                    width={MAP_SIZE}
+                    height={MAP_SIZE}
+                    style={{
+                        width: MAP_SIZE,
+                        height: MAP_SIZE,
+                        imageRendering: 'pixelated',
+                        display: 'block'
+                    }}
+                />
+                {/* corner shading overlay */}
+                <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_35px_rgba(0,0,0,0.7)]" />
+            </div>
 
             <div className="mt-2 grid grid-cols-2 gap-2">
                 <button

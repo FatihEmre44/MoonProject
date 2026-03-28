@@ -7,13 +7,13 @@ import { Stars as DreiStars } from '@react-three/drei';
 export default function Stars() {
   return (
     <DreiStars
-      radius={300}
-      depth={120}
-      count={6000}
-      factor={6}
-      saturation={0.1}
+      radius={500}
+      depth={100}
+      count={1200}
+      factor={2.5}
+      saturation={0}
       fade
-      speed={1.2}
+      speed={0.5}
     />
   );
 }

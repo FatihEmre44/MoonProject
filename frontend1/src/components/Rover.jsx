@@ -414,15 +414,39 @@ export default function Rover({
         <sphereGeometry args={[0.05, 12, 12]} />
         <meshStandardMaterial color="#fff8de" emissive="#fff8de" emissiveIntensity={2.8} />
       </mesh>
+      
+      {/* High-range exploration lights */}
+      <pointLight 
+        position={[0, 1.5, 1.3]} 
+        intensity={18} 
+        color="#fffceb" 
+        distance={25} 
+        decay={1.8}
+        castShadow
+      />
+      <spotLight 
+        position={[0, 1.2, 0.9]} 
+        angle={0.6} 
+        intensity={25} 
+        color="#fffcee" 
+        distance={45} 
+        decay={1.6} 
+        penumbra={0.5} 
+        castShadow
+      />
+
       <mesh position={[0.42, 0.55, -0.58]}>
         <sphereGeometry args={[0.033, 10, 10]} />
         <meshStandardMaterial ref={navLeftRef} color="#5ef7d3" emissive="#1de8be" emissiveIntensity={1.2} />
       </mesh>
-      <mesh position={[-0.42, 0.55, -0.58]}>
-        <sphereGeometry args={[0.033, 10, 10]} />
-        <meshStandardMaterial ref={navRightRef} color="#ff6f7f" emissive="#ff405e" emissiveIntensity={1.2} />
-      </mesh>
-      <pointLight position={[0, 0.08, 1.2]} intensity={1.5} color="#fff3d1" distance={6} />
+      <group position={[-0.42, 0.55, -0.58]}>
+        <mesh>
+          <sphereGeometry args={[0.033, 10, 10]} />
+          <meshStandardMaterial ref={navRightRef} color="#ff6f7f" emissive="#ff405e" emissiveIntensity={1.2} />
+        </mesh>
+      </group>
+      
+      {/* Chassis accent lights */}
       <pointLight position={[0, 0.55, -0.58]} intensity={0.6} color="#53ffd5" distance={2.8} />
     </group>
   );

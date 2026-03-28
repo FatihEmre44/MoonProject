@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
@@ -58,25 +59,61 @@ function randomRange(min, max) {
 
 function CameraController({ roverPosition, isRoverFocused }) {
     const { camera } = useThree()
-    const mapPosition = useMemo(() => new THREE.Vector3(0, 120, 120), [])
+    const controlsRef = useRef()
+    const wasFocusedLastFrame = useRef(isRoverFocused)
+    const shouldResetToOverview = useRef(false)
+
+    const mapPosition = useMemo(() => new THREE.Vector3(0, 150, 150), [])
     const mapLookAt = useMemo(() => new THREE.Vector3(0, 0, 0), [])
+    
     const targetPosition = useMemo(() => new THREE.Vector3(), [])
     const targetLookAt = useMemo(() => new THREE.Vector3(), [])
+
+    // Catch the transition from focused to unfocused
+    if (wasFocusedLastFrame.current && !isRoverFocused) {
+        shouldResetToOverview.current = true
+    }
+    wasFocusedLastFrame.current = isRoverFocused
 
     useFrame(() => {
         if (isRoverFocused) {
             targetPosition.set(roverPosition[0] + 10, roverPosition[1] + 6, roverPosition[2] + 10)
             targetLookAt.set(roverPosition[0], roverPosition[1] + 1.1, roverPosition[2])
-        } else {
-            targetPosition.copy(mapPosition)
-            targetLookAt.copy(mapLookAt)
+            
+            camera.position.lerp(targetPosition, 0.08)
+            if (controlsRef.current) {
+                controlsRef.current.target.lerp(targetLookAt, 0.08)
+            }
+            // Ensure we trigger a reset next time we exit focus mode
+            shouldResetToOverview.current = true
+        } else if (shouldResetToOverview.current) {
+            // Smoothly move to overview position ONLY ONCE after focus is disabled
+            camera.position.lerp(mapPosition, 0.05)
+            if (controlsRef.current) {
+                controlsRef.current.target.lerp(mapLookAt, 0.05)
+            }
+            
+            // Stop fighting the user once we're reasonably close to the overview
+            if (camera.position.distanceTo(mapPosition) < 0.5) {
+                shouldResetToOverview.current = false
+            }
         }
-
-        camera.position.lerp(targetPosition, 0.08)
-        camera.lookAt(targetLookAt)
     })
 
-    return null
+    return (
+        <OrbitControls 
+            ref={controlsRef}
+            makeDefault 
+            enableDamping 
+            dampingFactor={0.05}
+            rotateSpeed={1.2}
+            zoomSpeed={1.5}
+            panSpeed={1.2}
+            maxPolarAngle={Math.PI / 2 - 0.05}
+            minDistance={5}
+            maxDistance={800}
+        />
+    )
 }
 
 function TargetMarker({ position }) {
@@ -86,18 +123,22 @@ function TargetMarker({ position }) {
         if (!markerRef.current) return
         const t = state.clock.elapsedTime
         markerRef.current.rotation.y = t * 1.5
-        markerRef.current.position.y = position[1] + 0.4 + Math.sin(t * 3.2) * 0.08
+        markerRef.current.position.y = position[1] + 0.6 + Math.sin(t * 3.2) * 0.15
     })
 
     return (
-        <group ref={(node) => { markerRef.current = node }} position={[position[0], position[1] + 0.4, position[2]]}>
+        <group ref={(node) => { markerRef.current = node }} position={[position[0], position[1] + 0.6, position[2]]}>
             <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                <ringGeometry args={[0.35, 0.48, 48]} />
-                <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={0.85} transparent opacity={0.85} />
+                <ringGeometry args={[0.5, 0.75, 48]} />
+                <meshStandardMaterial color="#00f2ff" emissive="#00e5ff" emissiveIntensity={1.8} transparent opacity={0.9} />
             </mesh>
-            <mesh position={[0, 0.35, 0]} raycast={() => null}>
-                <coneGeometry args={[0.12, 0.3, 20]} />
-                <meshStandardMaterial color="#ff5f5f" emissive="#ff4040" emissiveIntensity={0.9} />
+            <mesh position={[0, 0.45, 0]} raycast={() => null}>
+                <coneGeometry args={[0.2, 0.6, 20]} />
+                <meshStandardMaterial color="#ff5f5f" emissive="#ff3030" emissiveIntensity={1.5} />
+            </mesh>
+            <mesh position={[0, 0.85, 0]} raycast={() => null}>
+                <sphereGeometry args={[0.08, 16, 16]} />
+                <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={2.5} />
             </mesh>
         </group>
     )
@@ -343,13 +384,17 @@ export default function App() {
                 className="absolute inset-0"
             >
                 {isStarted && (
-                    <Canvas
-                        camera={{ position: [0, 120, 120], fov: 55, far: 2000 }}
-                        style={{ width: '100%', height: '100%' }}
-                    >
-                        <Suspense fallback={null}>
-                            <Stars />
-                            <Lighting />
+                    <div className="relative h-full w-full">
+                        <Canvas
+                            camera={{ position: [0, 150, 150], fov: 55, far: 3000 }}
+                            style={{ width: '100%', height: '100%', background: '#000' }}
+                            onCreated={({ scene }) => {
+                                scene.background = new THREE.Color('#000000')
+                            }}
+                        >
+                            <Suspense fallback={null}>
+                                <Stars />
+                                <Lighting />
                             <MoonSurface
                                 selectedMap={selectedMap}
                                 isGridEnabled={isGridEnabled}
@@ -393,6 +438,7 @@ export default function App() {
                             />
                         </Suspense>
                     </Canvas>
+                    </div>
                 )}
             </motion.section>
 
@@ -487,6 +533,8 @@ export default function App() {
                                 isRoverFocused={isRoverFocused}
                                 onToggleGrid={handleToggleGrid}
                                 onToggleRoverFocus={() => setIsRoverFocused((prev) => !prev)}
+                                roverPath={plannedRouteWorld}
+                                roverPosition={roverLivePosition}
                             />
 
                             <RouteBot

@@ -29,24 +29,24 @@ export default function PathLine({ path = [], currentStep = 0 }) {
         <Line
           points={visitedPath}
           color="#39ff14"
-          lineWidth={3}
+          lineWidth={5}
           transparent
-          opacity={0.9}
+          opacity={1.0}
           raycast={() => null}
         />
       )}
 
-      {/* Unvisited portion — dim neon green */}
+      {/* Unvisited portion — bright neon blue/cyan for pathfinding */}
       {unvisitedPath.length >= 2 && (
         <Line
           points={unvisitedPath}
-          color="#39ff14"
-          lineWidth={1.5}
+          color="#00ffcc"
+          lineWidth={4}
           transparent
-          opacity={0.3}
+          opacity={0.8}
           dashed
-          dashSize={0.15}
-          gapSize={0.1}
+          dashSize={0.4}
+          gapSize={0.2}
           raycast={() => null}
         />
       )}
@@ -54,11 +54,11 @@ export default function PathLine({ path = [], currentStep = 0 }) {
       {/* Start marker */}
       {path.length > 0 && (
         <mesh position={path[0]} raycast={() => null}>
-          <sphereGeometry args={[0.12, 16, 16]} />
+          <sphereGeometry args={[0.3, 24, 24]} />
           <meshStandardMaterial
             color="#00d4ff"
-            emissive="#00d4ff"
-            emissiveIntensity={1}
+            emissive="#00e5ff"
+            emissiveIntensity={2}
           />
         </mesh>
       )}
@@ -66,11 +66,11 @@ export default function PathLine({ path = [], currentStep = 0 }) {
       {/* End marker */}
       {path.length > 1 && (
         <mesh position={path[path.length - 1]} raycast={() => null}>
-          <sphereGeometry args={[0.12, 16, 16]} />
+          <sphereGeometry args={[0.3, 24, 24]} />
           <meshStandardMaterial
-            color="#ff4444"
-            emissive="#ff4444"
-            emissiveIntensity={1}
+            color="#ff5f5f"
+            emissive="#ff3030"
+            emissiveIntensity={2}
           />
         </mesh>
       )}
