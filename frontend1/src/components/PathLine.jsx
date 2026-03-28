@@ -26,53 +26,97 @@ export default function PathLine({ path = [], currentStep = 0 }) {
     <group>
       {/* Visited portion — bright neon green */}
       {visitedPath.length >= 2 && (
-        <Line
-          points={visitedPath}
-          color="#39ff14"
-          lineWidth={5}
-          transparent
-          opacity={1.0}
-          raycast={() => null}
-        />
+        <group>
+          {/* Main solid line */}
+          <Line
+            points={visitedPath}
+            color="#39ff14"
+            lineWidth={8}
+            transparent
+            opacity={1.0}
+            raycast={() => null}
+          />
+          {/* Outer glow layer */}
+          <Line
+            points={visitedPath}
+            color="#8fff71"
+            lineWidth={24}
+            transparent
+            opacity={0.25}
+            raycast={() => null}
+          />
+        </group>
       )}
 
       {/* Unvisited portion — bright neon blue/cyan for pathfinding */}
       {unvisitedPath.length >= 2 && (
-        <Line
-          points={unvisitedPath}
-          color="#00ffcc"
-          lineWidth={4}
-          transparent
-          opacity={0.8}
-          dashed
-          dashSize={0.4}
-          gapSize={0.2}
-          raycast={() => null}
-        />
+        <group>
+          {/* Main solid line */}
+          <Line
+            points={unvisitedPath}
+            color="#00ffe1"
+            lineWidth={6}
+            transparent
+            opacity={0.9}
+            dashed
+            dashSize={0.8}
+            gapSize={0.4}
+            raycast={() => null}
+          />
+          {/* Outer glow layer */}
+          <Line
+            points={unvisitedPath}
+            color="#80fff1"
+            lineWidth={18}
+            transparent
+            opacity={0.2}
+            raycast={() => null}
+          />
+        </group>
       )}
 
-      {/* Start marker */}
+      {/* Start marker - Cyber Pillar */}
       {path.length > 0 && (
-        <mesh position={path[0]} raycast={() => null}>
-          <sphereGeometry args={[0.3, 24, 24]} />
-          <meshStandardMaterial
-            color="#00d4ff"
-            emissive="#00e5ff"
-            emissiveIntensity={2}
-          />
-        </mesh>
+        <group position={path[0]}>
+          <mesh position={[0, 1.5, 0]} raycast={() => null}>
+            <cylinderGeometry args={[0.15, 0.15, 3, 16]} />
+            <meshStandardMaterial
+              color="#00d4ff"
+              emissive="#00e5ff"
+              emissiveIntensity={3}
+              transparent
+              opacity={0.8}
+            />
+          </mesh>
+          <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
+            <torusGeometry args={[0.6, 0.08, 16, 32]} />
+            <meshStandardMaterial color="#00d4ff" emissive="#00e5ff" emissiveIntensity={4} />
+          </mesh>
+        </group>
       )}
 
-      {/* End marker */}
+      {/* End marker - Target Cyber Pillar */}
       {path.length > 1 && (
-        <mesh position={path[path.length - 1]} raycast={() => null}>
-          <sphereGeometry args={[0.3, 24, 24]} />
-          <meshStandardMaterial
-            color="#ff5f5f"
-            emissive="#ff3030"
-            emissiveIntensity={2}
-          />
-        </mesh>
+        <group position={path[path.length - 1]}>
+          <mesh position={[0, 2, 0]} raycast={() => null}>
+            <cylinderGeometry args={[0.25, 0.25, 4, 16]} />
+            <meshStandardMaterial
+              color="#ff5f5f"
+              emissive="#ff3030"
+              emissiveIntensity={3}
+              transparent
+              opacity={0.7}
+            />
+          </mesh>
+          <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
+            <torusGeometry args={[1.2, 0.1, 16, 48]} />
+            <meshStandardMaterial color="#ff5f5f" emissive="#ff3030" emissiveIntensity={4} />
+          </mesh>
+          <mesh position={[0, 0.1, 0]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
+            <torusGeometry args={[0.6, 0.06, 16, 32]} />
+            <meshStandardMaterial color="#ff5f5f" emissive="#ff3030" emissiveIntensity={4} />
+          </mesh>
+        </group>
       )}
     </group>
   );

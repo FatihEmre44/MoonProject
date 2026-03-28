@@ -117,29 +117,46 @@ function CameraController({ roverPosition, isRoverFocused }) {
 }
 
 function TargetMarker({ position }) {
-    const markerRef = useRef(null)
+    const groupRef = useRef(null)
+    const pulseRingRef = useRef(null)
 
     useFrame((state) => {
-        if (!markerRef.current) return
+        if (!groupRef.current) return
         const t = state.clock.elapsedTime
-        markerRef.current.rotation.y = t * 1.5
-        markerRef.current.position.y = position[1] + 0.6 + Math.sin(t * 3.2) * 0.15
+        groupRef.current.rotation.y = t * 0.5
+        
+        if (pulseRingRef.current) {
+            const s = 1 + Math.sin(t * 3) * 0.4
+            pulseRingRef.current.scale.set(s, s, 1)
+            pulseRingRef.current.material.opacity = 0.6 - (Math.sin(t * 3) * 0.4)
+        }
     })
 
     return (
-        <group ref={(node) => { markerRef.current = node }} position={[position[0], position[1] + 0.6, position[2]]}>
+        <group ref={groupRef} position={[position[0], position[1] + 0.1, position[2]]}>
+            {/* Ground rings */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                <ringGeometry args={[0.5, 0.75, 48]} />
-                <meshStandardMaterial color="#00f2ff" emissive="#00e5ff" emissiveIntensity={1.8} transparent opacity={0.9} />
+                <ringGeometry args={[0.5, 0.7, 48]} />
+                <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={4} transparent opacity={0.9} />
             </mesh>
-            <mesh position={[0, 0.45, 0]} raycast={() => null}>
-                <coneGeometry args={[0.2, 0.6, 20]} />
-                <meshStandardMaterial color="#ff5f5f" emissive="#ff3030" emissiveIntensity={1.5} />
+            <mesh ref={pulseRingRef} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+                <ringGeometry args={[1.0, 1.2, 48]} />
+                <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={2} transparent opacity={0.5} />
             </mesh>
-            <mesh position={[0, 0.85, 0]} raycast={() => null}>
-                <sphereGeometry args={[0.08, 16, 16]} />
-                <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={2.5} />
+
+            {/* Vertical Beam */}
+            <mesh position={[0, 15, 0]} raycast={() => null}>
+                <cylinderGeometry args={[0.02, 0.1, 30, 16]} />
+                <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={8} transparent opacity={0.2} />
             </mesh>
+
+            {/* Floating marker */}
+            <mesh position={[0, 1.8, 0]} raycast={() => null}>
+                <octahedronGeometry args={[0.4, 0]} />
+                <meshStandardMaterial color="#ff3d5f" emissive="#ff003c" emissiveIntensity={10} />
+            </mesh>
+
+            <pointLight distance={8} intensity={2} color="#00f2ff" />
         </group>
     )
 }
@@ -385,6 +402,11 @@ export default function App() {
             >
                 {isStarted && (
                     <div className="relative h-full w-full">
+                        {/* Harita Köşelerini Karartan İnce Vinyet */}
+                        <div 
+                            className="pointer-events-none absolute inset-0 z-20" 
+                            style={{ background: 'radial-gradient(circle, transparent 55%, rgba(0,0,0,0.8) 140%)' }} 
+                        />
                         <Canvas
                             camera={{ position: [0, 150, 150], fov: 55, far: 3000 }}
                             style={{ width: '100%', height: '100%', background: '#000' }}

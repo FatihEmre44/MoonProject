@@ -113,7 +113,14 @@ export default function Rover({
         const dist = Math.hypot(dx, dz);
 
         if (dist > 0.0001) {
-          motion.headingY = Math.atan2(dx, dz);
+          const targetHeading = Math.atan2(dx, dz);
+          // Shortest path angle math
+          let diff = targetHeading - motion.headingY;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          
+          // Apply smooth interpolation (delta-time based)
+          motion.headingY += diff * Math.min(1.0, delta * 5.0);
         }
 
         if (dist <= 0.08) {
