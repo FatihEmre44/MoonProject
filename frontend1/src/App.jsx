@@ -85,11 +85,18 @@ export default function App() {
     const [logs, setLogs] = useState(INITIAL_LOGS)
     const [selectedMap, setSelectedMap] = useState('mid-crater')
     const [isRoverFocused, setIsRoverFocused] = useState(false)
+    const [roverResetSignal, setRoverResetSignal] = useState(0)
 
-    const roverPosition = useMemo(() => {
+    const roverStartPosition = useMemo(() => {
         const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78]
         return [x, getTerrainHeight(x, z, selectedMap) + 0.48, z]
     }, [selectedMap])
+
+    const [roverLivePosition, setRoverLivePosition] = useState(roverStartPosition)
+
+    useEffect(() => {
+        setRoverLivePosition(roverStartPosition)
+    }, [roverStartPosition])
 
     useEffect(() => {
         if (!isStarted) return undefined
@@ -141,8 +148,10 @@ export default function App() {
     }
 
     const handleResetSimulation = () => {
-        // Kept as animation reset hook; currently no active timeline to reset.
+        // Reset rover motion timeline.
         setIsRoverFocused(false)
+        setRoverResetSignal((prev) => prev + 1)
+        setRoverLivePosition(roverStartPosition)
     }
 
     const handleReturnToMenu = () => {
@@ -154,6 +163,7 @@ export default function App() {
         setTarget(INITIAL_TARGET)
         setLogs(INITIAL_LOGS)
         setSelectedMap('mid-crater')
+        setRoverResetSignal((prev) => prev + 1)
     }
 
     return (
@@ -168,16 +178,33 @@ export default function App() {
             >
                 {isStarted && (
                     <Canvas
-                        camera={{ position: [0, 120, 120], fov: 55 }}
+                        camera={{ position: [0, 120, 120], fov: 55, far: 2000 }}
                         style={{ width: '100%', height: '100%' }}
                     >
                         <Suspense fallback={null}>
                             <Stars />
                             <Lighting />
                             <MoonSurface selectedMap={selectedMap} isGridEnabled={isGridEnabled} />
-                            <Rover position={roverPosition} rotationY={Math.PI} />
+                            <Rover
+                                initialPosition={roverStartPosition}
+                                rotationY={Math.PI}
+                                mapId={selectedMap}
+                                isPlaying={isStarted}
+                                resetSignal={roverResetSignal}
+                                onPositionChange={setRoverLivePosition}
+                                onObstacleHit={() => {
+                                    setLogs((prev) => [
+                                        ...prev.slice(-7),
+                                        {
+                                            id: Date.now() + Math.random(),
+                                            text: 'Rock impact detected: stabilizer response active',
+                                            level: 'warn',
+                                        },
+                                    ])
+                                }}
+                            />
                             <CameraController
-                                roverPosition={roverPosition}
+                                roverPosition={roverLivePosition}
                                 isRoverFocused={isRoverFocused}
                             />
                         </Suspense>

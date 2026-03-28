@@ -1,15 +1,62 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { getTerrainHeight, seededRandom } from '../utils/terrainUtils';
 
 /**
- * Rover — high-detail lunar rover with suspension, payload modules and animated sensor systems.
+ * Rover — high-detail rover with forward motion and realistic impact response.
  */
-export default function Rover({ position = [0, 0, 0], rotationY = 0 }) {
+export default function Rover({
+  initialPosition = [0, 0, 0],
+  rotationY = 0,
+  mapId = 'mid-crater',
+  isPlaying = false,
+  onPositionChange,
+  onObstacleHit,
+  resetSignal = 0,
+}) {
   const roverRef = useRef();
   const mastHeadRef = useRef();
   const dishRef = useRef();
   const navLeftRef = useRef();
   const navRightRef = useRef();
+  const emitAccumulatorRef = useRef(0);
+
+  const motionRef = useRef({
+    x: initialPosition[0],
+    z: initialPosition[2],
+    impact: 0,
+    impactSide: 1,
+    passedObstacleIndexes: new Set(),
+  });
+
+  const PATH_END_Z = -90;
+  const FORWARD_SPEED = 4.3;
+
+  const obstacles = useMemo(() => {
+    const seed = mapId.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) + 1337;
+    const rng = seededRandom(seed);
+    const list = [];
+    const startZ = initialPosition[2];
+    for (let i = 0; i < 10; i++) {
+      list.push({
+        x: (rng() - 0.5) * 0.62,
+        z: startZ - 7 - i * (6.8 + rng() * 3.2),
+        radius: 0.24 + rng() * 0.08,
+      });
+    }
+    return list;
+  }, [mapId, initialPosition]);
+
+  useEffect(() => {
+    motionRef.current = {
+      x: initialPosition[0],
+      z: initialPosition[2],
+      impact: 0,
+      impactSide: 1,
+      passedObstacleIndexes: new Set(),
+    };
+    emitAccumulatorRef.current = 0;
+  }, [initialPosition, mapId, resetSignal]);
 
   const wheelPositions = useMemo(
     () => [
@@ -41,9 +88,62 @@ export default function Rover({ position = [0, 0, 0], rotationY = 0 }) {
   useFrame((state, delta) => {
     if (!roverRef.current) return;
 
+    const motion = motionRef.current;
+
+    if (isPlaying) {
+      motion.z -= FORWARD_SPEED * delta;
+      if (motion.z < PATH_END_Z) {
+        motion.z = initialPosition[2];
+        motion.passedObstacleIndexes.clear();
+      }
+    }
+
+    for (let i = 0; i < obstacles.length; i++) {
+      if (motion.passedObstacleIndexes.has(i)) continue;
+      const rock = obstacles[i];
+      const dz = Math.abs(motion.z - rock.z);
+      const dx = Math.abs(motion.x - rock.x);
+
+      if (dz < 0.44 && dx < rock.radius) {
+        motion.impact = 1;
+        motion.impactSide = rock.x >= motion.x ? 1 : -1;
+        motion.passedObstacleIndexes.add(i);
+        onObstacleHit?.(i);
+      }
+    }
+
     const t = state.clock.elapsedTime;
-    roverRef.current.position.y = position[1] + Math.sin(t * 1.8) * 0.014;
-    roverRef.current.rotation.z = Math.sin(t * 0.9) * 0.008;
+    motion.impact = Math.max(0, motion.impact - delta * 2.8);
+
+    const centerHeight = getTerrainHeight(motion.x, motion.z, mapId);
+    const forwardHeight = getTerrainHeight(motion.x, motion.z - 0.8, mapId);
+    const rearHeight = getTerrainHeight(motion.x, motion.z + 0.8, mapId);
+    const rightHeight = getTerrainHeight(motion.x + 0.75, motion.z, mapId);
+    const leftHeight = getTerrainHeight(motion.x - 0.75, motion.z, mapId);
+
+    const basePitch = Math.atan2(forwardHeight - rearHeight, 1.6) * 0.7;
+    const baseRoll = Math.atan2(rightHeight - leftHeight, 1.5) * 0.6;
+
+    const idleBounce = Math.sin(t * 4.3) * 0.01;
+    const hitShakeY = Math.sin(t * 72) * 0.05 * motion.impact;
+    const hitShakeX = Math.sin(t * 92) * 0.018 * motion.impact * motion.impactSide;
+    const hitPitch = Math.sin(t * 58) * 0.1 * motion.impact;
+    const hitRoll = Math.sin(t * 64) * 0.12 * motion.impact * motion.impactSide;
+    const hitYaw = Math.sin(t * 34) * 0.06 * motion.impact * motion.impactSide;
+
+    const worldY = centerHeight + 0.48;
+    roverRef.current.position.set(
+      motion.x + hitShakeX,
+      worldY + idleBounce + hitShakeY,
+      motion.z
+    );
+    roverRef.current.rotation.set(
+      basePitch + hitPitch,
+      rotationY + hitYaw,
+      baseRoll + hitRoll
+    );
+
+    onPositionChange?.([motion.x, worldY, motion.z]);
 
     if (mastHeadRef.current) {
       mastHeadRef.current.rotation.y += delta * 0.3;
@@ -60,7 +160,7 @@ export default function Rover({ position = [0, 0, 0], rotationY = 0 }) {
   });
 
   return (
-    <group ref={roverRef} position={position} rotation={[0, rotationY, 0]}>
+    <group ref={roverRef} position={initialPosition} rotation={[0, rotationY, 0]}>
       {/* Lower hull and skid */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[1.48, 0.26, 1.7]} />
