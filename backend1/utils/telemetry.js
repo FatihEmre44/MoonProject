@@ -58,6 +58,18 @@ function analyzeObstacleProximity(path, grid) {
 }
 
 /**
+ * Batarya tuketimini niteliksel seviyeye cevirir.
+ * Bu alan AI raporlarinda ham yuzde yerine kullanilir.
+ */
+function classifyBatteryUsage(batteryPercent) {
+  if (batteryPercent <= 30) return 'Dusuk';
+  if (batteryPercent <= 60) return 'Orta';
+  if (batteryPercent <= 100) return 'Yuksek';
+  if (batteryPercent <= 160) return 'Cok Yuksek';
+  return 'Asiri Yuksek';
+}
+
+/**
  * A* sonucundan telemetri raporu üretir.
  *
  * @param {object}     astarResult       - astar() fonksiyonunun döndürdüğü obje
@@ -94,6 +106,7 @@ function calculateTelemetry(astarResult, grid) {
     return {
       batteryUsage: '%0',
       batteryPercent: 0,
+      batteryLevel: 'Dusuk',
       riskScore: 'Hesaplanamadı',
       riskDetails: null,
       summary: null,
@@ -119,6 +132,7 @@ function calculateTelemetry(astarResult, grid) {
   // Formül: (totalCost * 0.7) + (diagonal çapraz adımlar * 0.3)
   const batteryPercent = parseFloat(((totalCost * 0.7) + (diagonalCount * 0.3)).toFixed(1));
   const batteryUsage = `%${batteryPercent}`;
+  const batteryLevel = classifyBatteryUsage(batteryPercent);
 
   // ─────────────────────────────────────
   // 2. RİSK SKORU
@@ -178,6 +192,7 @@ function calculateTelemetry(astarResult, grid) {
   return {
     batteryUsage,
     batteryPercent,
+    batteryLevel,
     riskScore,
     riskDetails: {
       costPerStep,

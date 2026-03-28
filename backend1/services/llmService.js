@@ -18,6 +18,22 @@ const openai = new OpenAI({
   apiKey: apiKey,
 });
 
+function sanitizeTelemetryForNarrative(telemetryData = {}) {
+  const narrativeData = { ...telemetryData };
+
+  // AI aciklamasinda ham yuzde yerine niteliksel ifade kullan.
+  if (narrativeData.batteryLevel) {
+    narrativeData.batteryUsage = narrativeData.batteryLevel;
+  }
+
+  if (typeof narrativeData.batteryUsage === 'string' && narrativeData.batteryUsage.includes('%')) {
+    narrativeData.batteryUsage = narrativeData.batteryLevel || 'Orta';
+  }
+
+  delete narrativeData.batteryPercent;
+  return narrativeData;
+}
+
 /**
  * Rover telemetri analizini OpenAI (GPT) ile yorumlayıp rapor oluşturur.
  * @param {Object} telemetryData - A* ve Telemetri fonksiyonundan gelen veriler
@@ -28,16 +44,18 @@ export async function generateMissionReport(telemetryData) {
       throw new Error("OPENAI_API_KEY_MISSING");
     }
 
+    const narrativeTelemetry = sanitizeTelemetryForNarrative(telemetryData);
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini", // Hem çok ucuz hem de çok hızlı (Flash dengi)
       messages: [
         {
           role: "system",
-          content: "Sen Türkiye Uzay Ajansı (TUA) Ay Araştırma Programı'nda (AYAP) görevli bir Kıdemli Navigasyon Mühendisisin. Görevin, otonom Rover'ın belirlediği rotayı teknik ve stratejik olarak onaylamaktır. Maksimum 2 cümlelik, profesyonel teknik analiz raporu üret. Markdown kullanma."
+          content: "Sen Türkiye Uzay Ajansı (TUA) Ay Araştırma Programı'nda (AYAP) görevli bir Kıdemli Navigasyon Mühendisisin. Görevin, otonom Rover'ın belirlediği rotayı teknik ve stratejik olarak onaylamaktır. Maksimum 2 cümlelik, profesyonel teknik analiz raporu üret. Batarya ifadesini sayısal yüzde ile değil niteliksel seviyelerle (Dusuk/Orta/Yuksek/Cok Yuksek/Asiri Yuksek) yaz. Markdown kullanma."
         },
         {
           role: "user",
-          content: `Aşağıdaki telemetri verilerini analiz et ve rotanın neden güvenli/optimum olduğunu açıkla: ${JSON.stringify(telemetryData)}`
+          content: `Asagidaki telemetriyi analiz et. Batarya icin sayisal yuzde veya ham rakam verme; sadece niteliksel seviye kullan. Rotanin neden guvenli/optimum oldugunu acikla: ${JSON.stringify(narrativeTelemetry)}`
         }
       ],
       max_tokens: 150,

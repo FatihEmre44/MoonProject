@@ -18,9 +18,9 @@ export default function MoonSurface({
   onSelectTarget,
 }) {
   const planeSize = TERRAIN_PLANE_SIZE
-  const segments = 400
 
   const profile = getMapProfile(selectedMap)
+  const segments = profile.terrainSegments || 320
 
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(planeSize, planeSize, segments, segments)
