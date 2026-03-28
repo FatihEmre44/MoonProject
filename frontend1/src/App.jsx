@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import IntroScreen from './components/ui/IntroScreen'
 import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
@@ -52,6 +53,29 @@ function randomRange(min, max) {
     return Math.random() * (max - min) + min
 }
 
+function CameraController({ roverPosition, isRoverFocused }) {
+    const { camera } = useThree()
+    const mapPosition = useMemo(() => new THREE.Vector3(0, 120, 120), [])
+    const mapLookAt = useMemo(() => new THREE.Vector3(0, 0, 0), [])
+    const targetPosition = useMemo(() => new THREE.Vector3(), [])
+    const targetLookAt = useMemo(() => new THREE.Vector3(), [])
+
+    useFrame(() => {
+        if (isRoverFocused) {
+            targetPosition.set(roverPosition[0] + 10, roverPosition[1] + 6, roverPosition[2] + 10)
+            targetLookAt.set(roverPosition[0], roverPosition[1] + 1.1, roverPosition[2])
+        } else {
+            targetPosition.copy(mapPosition)
+            targetLookAt.copy(mapLookAt)
+        }
+
+        camera.position.lerp(targetPosition, 0.08)
+        camera.lookAt(targetLookAt)
+    })
+
+    return null
+}
+
 export default function App() {
     const [isStarted, setIsStarted] = useState(false)
     const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -60,6 +84,7 @@ export default function App() {
     const [target, setTarget] = useState(INITIAL_TARGET)
     const [logs, setLogs] = useState(INITIAL_LOGS)
     const [selectedMap, setSelectedMap] = useState('mid-crater')
+    const [isRoverFocused, setIsRoverFocused] = useState(false)
 
     const roverPosition = useMemo(() => {
         const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78]
@@ -103,14 +128,6 @@ export default function App() {
         return () => clearInterval(timer)
     }, [isStarted])
 
-    const handleRecalculatePath = () => {
-        setLogs((prev) => [
-            ...prev.slice(-7),
-            { id: Date.now(), text: 'Path recalculation requested', level: 'ok' },
-        ])
-        setTarget((prev) => ({ ...prev, distance: prev.distance + randomRange(20, 120) }))
-    }
-
     const handleToggleGrid = () => {
         setIsGridEnabled((prev) => !prev)
         setLogs((prev) => [
@@ -127,6 +144,7 @@ export default function App() {
         setIsStarted(false)
         setIsPanelOpen(false)
         setIsGridEnabled(true)
+        setIsRoverFocused(false)
         setTelemetry(INITIAL_TELEMETRY)
         setTarget(INITIAL_TARGET)
         setLogs(INITIAL_LOGS)
@@ -152,6 +170,10 @@ export default function App() {
                             <Lighting />
                             <MoonSurface selectedMap={selectedMap} isGridEnabled={isGridEnabled} />
                             <Rover position={roverPosition} rotationY={Math.PI} />
+                            <CameraController
+                                roverPosition={roverPosition}
+                                isRoverFocused={isRoverFocused}
+                            />
                         </Suspense>
                     </Canvas>
                 )}
@@ -175,9 +197,6 @@ export default function App() {
                                 telemetry={telemetry}
                                 logs={logs}
                                 target={target}
-                                isGridEnabled={isGridEnabled}
-                                onRecalculatePath={handleRecalculatePath}
-                                onToggleGrid={handleToggleGrid}
                                 onResetSimulation={handleResetSimulation}
                                 onClose={() => setIsPanelOpen(false)}
                                 selectedMap={selectedMap}
@@ -187,6 +206,10 @@ export default function App() {
                             <Minimap
                                 isStarted={isStarted}
                                 selectedMap={selectedMap}
+                                isGridEnabled={isGridEnabled}
+                                isRoverFocused={isRoverFocused}
+                                onToggleGrid={handleToggleGrid}
+                                onToggleRoverFocus={() => setIsRoverFocused((prev) => !prev)}
                             />
                         </>
                     )}

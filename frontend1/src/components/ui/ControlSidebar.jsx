@@ -26,9 +26,6 @@ export default function ControlSidebar({
     isOpen,
     telemetry,
     target,
-    isGridEnabled,
-    onRecalculatePath,
-    onToggleGrid,
     onResetSimulation,
     onClose,
     selectedMap,
@@ -122,11 +119,10 @@ export default function ControlSidebar({
                                             onSelectMap(map.id)
                                             setIsMapMenuOpen(false)
                                         }}
-                                        className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${
-                                            selectedMap === map.id
-                                                ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
-                                                : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
-                                        }`}
+                                        className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${selectedMap === map.id
+                                            ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
+                                            : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
+                                            }`}
                                     >
                                         <div className="flex items-center gap-2 text-xs font-medium">
                                             <span>{CRATER_ICONS[map.id]}</span>
@@ -148,24 +144,6 @@ export default function ControlSidebar({
                         className="rounded-xl border border-rose-400/45 bg-rose-500/15 px-4 py-3 text-xs tracking-[0.2em] text-rose-200"
                     >
                         SİMÜLASYONU SIFIRLA
-                    </motion.button>
-
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        whileHover={{ scale: 1.01 }}
-                        onClick={onRecalculatePath}
-                        className="rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-3 text-xs tracking-[0.2em] text-amber-200"
-                    >
-                        ROTA YENİDEN HESAPLA
-                    </motion.button>
-
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        whileHover={{ scale: 1.01 }}
-                        onClick={onToggleGrid}
-                        className="rounded-xl border border-cyan-400/45 bg-cyan-500/15 px-4 py-3 text-xs tracking-[0.2em] text-cyan-100"
-                    >
-                        GRID {isGridEnabled ? 'AÇIK' : 'KAPALI'}
                     </motion.button>
                 </footer>
             </motion.aside>
