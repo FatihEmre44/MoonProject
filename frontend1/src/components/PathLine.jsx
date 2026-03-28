@@ -32,6 +32,7 @@ export default function PathLine({ path = [], currentStep = 0 }) {
           lineWidth={3}
           transparent
           opacity={0.9}
+          raycast={() => null}
         />
       )}
 
@@ -46,12 +47,13 @@ export default function PathLine({ path = [], currentStep = 0 }) {
           dashed
           dashSize={0.15}
           gapSize={0.1}
+          raycast={() => null}
         />
       )}
 
       {/* Start marker */}
       {path.length > 0 && (
-        <mesh position={path[0]}>
+        <mesh position={path[0]} raycast={() => null}>
           <sphereGeometry args={[0.12, 16, 16]} />
           <meshStandardMaterial
             color="#00d4ff"
@@ -63,7 +65,7 @@ export default function PathLine({ path = [], currentStep = 0 }) {
 
       {/* End marker */}
       {path.length > 1 && (
-        <mesh position={path[path.length - 1]}>
+        <mesh position={path[path.length - 1]} raycast={() => null}>
           <sphereGeometry args={[0.12, 16, 16]} />
           <meshStandardMaterial
             color="#ff4444"

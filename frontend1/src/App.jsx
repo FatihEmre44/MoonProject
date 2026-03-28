@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useRef, useState, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -6,10 +6,13 @@ import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
 import Minimap from './components/ui/Minimap'
 import MoonSurface from './components/MoonSurface'
+import PathLine from './components/PathLine'
 import Lighting from './components/Lighting'
 import Stars from './components/Stars'
 import Rover from './components/Rover'
 import { getTerrainHeight } from './utils/terrainUtils'
+import { worldToGrid, gridToWorld, pathToWorld } from './utils/coordinateMapper'
+import { buildMapDataFromProfile, sendAstarRequest } from './utils/buildMapData'
 
 const INITIAL_TELEMETRY = {
     speed: 1.85,
@@ -75,6 +78,30 @@ function CameraController({ roverPosition, isRoverFocused }) {
     return null
 }
 
+function TargetMarker({ position }) {
+    const markerRef = useRef(null)
+
+    useFrame((state) => {
+        if (!markerRef.current) return
+        const t = state.clock.elapsedTime
+        markerRef.current.rotation.y = t * 1.5
+        markerRef.current.position.y = position[1] + 0.4 + Math.sin(t * 3.2) * 0.08
+    })
+
+    return (
+        <group ref={(node) => { markerRef.current = node }} position={[position[0], position[1] + 0.4, position[2]]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+                <ringGeometry args={[0.35, 0.48, 48]} />
+                <meshStandardMaterial color="#00f2ff" emissive="#00f2ff" emissiveIntensity={0.85} transparent opacity={0.85} />
+            </mesh>
+            <mesh position={[0, 0.35, 0]} raycast={() => null}>
+                <coneGeometry args={[0.12, 0.3, 20]} />
+                <meshStandardMaterial color="#ff5f5f" emissive="#ff4040" emissiveIntensity={0.9} />
+            </mesh>
+        </group>
+    )
+}
+
 export default function App() {
     const [isStarted, setIsStarted] = useState(false)
     const [isRoverMoving, setIsRoverMoving] = useState(false)
@@ -86,6 +113,8 @@ export default function App() {
     const [selectedMap, setSelectedMap] = useState('mid-crater')
     const [isRoverFocused, setIsRoverFocused] = useState(false)
     const [roverResetSignal, setRoverResetSignal] = useState(0)
+    const [selectedTargetGrid, setSelectedTargetGrid] = useState(null)
+    const [plannedRouteWorld, setPlannedRouteWorld] = useState([])
 
     const roverStartPosition = useMemo(() => {
         const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78]
@@ -94,9 +123,89 @@ export default function App() {
 
     const [roverLivePosition, setRoverLivePosition] = useState(roverStartPosition)
 
+    const selectedTargetWorld = useMemo(() => {
+        if (!selectedTargetGrid) return null
+        const [row, col] = selectedTargetGrid
+        const { x, z } = gridToWorld(col, row)
+        const y = getTerrainHeight(x, z, selectedMap)
+        return [x, y, z]
+    }, [selectedTargetGrid, selectedMap])
+
     useEffect(() => {
         setRoverLivePosition(roverStartPosition)
     }, [roverStartPosition])
+
+    useEffect(() => {
+        setIsRoverMoving(false)
+        setSelectedTargetGrid(null)
+        setPlannedRouteWorld([])
+        setTarget(INITIAL_TARGET)
+        setRoverResetSignal((prev) => prev + 1)
+    }, [selectedMap])
+
+    const handleTerrainTargetSelect = ({ x, z }) => {
+        const { row, col } = worldToGrid(x, z)
+        const clampedRow = Math.max(0, Math.min(199, row))
+        const clampedCol = Math.max(0, Math.min(199, col))
+        setSelectedTargetGrid([clampedRow, clampedCol])
+
+        const dx = x - roverLivePosition[0]
+        const dz = z - roverLivePosition[2]
+        const distance = Math.hypot(dx, dz)
+
+        setTarget({
+            name: `GRID [${clampedRow}, ${clampedCol}]`,
+            distance,
+        })
+
+        setLogs((prev) => [
+            ...prev.slice(-7),
+            {
+                id: Date.now(),
+                text: `Hedef secildi: [${clampedRow}, ${clampedCol}]`,
+                level: 'ok',
+            },
+        ])
+    }
+
+    const handlePlanRoute = async () => {
+        if (!selectedTargetGrid) {
+            throw new Error('Lutfen harita uzerinde hedef noktayi tiklayin')
+        }
+
+        const mapData = buildMapDataFromProfile(selectedMap)
+        const start = worldToGrid(roverLivePosition[0], roverLivePosition[2])
+        const waypoints = [
+            [Math.max(0, Math.min(199, start.row)), Math.max(0, Math.min(199, start.col))],
+            selectedTargetGrid,
+        ]
+
+        const result = await sendAstarRequest(
+            { ...mapData, waypoints },
+            'http://localhost:3000',
+            false
+        )
+
+        if (!result?.success || !Array.isArray(result.path)) {
+            return result
+        }
+
+        const worldPath = pathToWorld(result.path)
+        setPlannedRouteWorld(worldPath)
+        setIsRoverMoving(false)
+        setRoverResetSignal((prev) => prev + 1)
+
+        setLogs((prev) => [
+            ...prev.slice(-7),
+            {
+                id: Date.now(),
+                text: `Rota olusturuldu: ${result.stats.stepCount} adim`,
+                level: 'ok',
+            },
+        ])
+
+        return result
+    }
 
     useEffect(() => {
         if (!isRoverMoving) return undefined
@@ -135,6 +244,21 @@ export default function App() {
         return () => clearInterval(timer)
     }, [isRoverMoving])
 
+    useEffect(() => {
+        if (!selectedTargetGrid) return
+        const [row, col] = selectedTargetGrid
+        const targetWorld = gridToWorld(col, row)
+        const distance = Math.hypot(
+            targetWorld.x - roverLivePosition[0],
+            targetWorld.z - roverLivePosition[2]
+        )
+        setTarget((prev) => ({
+            ...prev,
+            name: `GRID [${row}, ${col}]`,
+            distance,
+        }))
+    }, [roverLivePosition, selectedTargetGrid])
+
     const handleToggleGrid = () => {
         setIsGridEnabled((prev) => !prev)
         setLogs((prev) => [
@@ -153,6 +277,9 @@ export default function App() {
         setIsRoverFocused(false)
         setRoverResetSignal((prev) => prev + 1)
         setRoverLivePosition(roverStartPosition)
+        setPlannedRouteWorld([])
+        setSelectedTargetGrid(null)
+        setTarget(INITIAL_TARGET)
     }
 
     const handleReturnToMenu = () => {
@@ -165,6 +292,8 @@ export default function App() {
         setTarget(INITIAL_TARGET)
         setLogs(INITIAL_LOGS)
         setSelectedMap('mid-crater')
+        setSelectedTargetGrid(null)
+        setPlannedRouteWorld([])
         setRoverResetSignal((prev) => prev + 1)
     }
 
@@ -186,14 +315,32 @@ export default function App() {
                         <Suspense fallback={null}>
                             <Stars />
                             <Lighting />
-                            <MoonSurface selectedMap={selectedMap} isGridEnabled={isGridEnabled} />
+                            <MoonSurface
+                                selectedMap={selectedMap}
+                                isGridEnabled={isGridEnabled}
+                                onSelectTarget={handleTerrainTargetSelect}
+                            />
+                            {selectedTargetWorld && <TargetMarker position={selectedTargetWorld} />}
+                            <PathLine path={plannedRouteWorld} currentStep={0} />
                             <Rover
                                 initialPosition={roverStartPosition}
                                 rotationY={Math.PI}
                                 mapId={selectedMap}
                                 isPlaying={isRoverMoving}
+                                routePoints={plannedRouteWorld}
                                 resetSignal={roverResetSignal}
                                 onPositionChange={setRoverLivePosition}
+                                onRouteComplete={() => {
+                                    setIsRoverMoving(false)
+                                    setLogs((prev) => [
+                                        ...prev.slice(-7),
+                                        {
+                                            id: Date.now() + Math.random(),
+                                            text: 'Rover hedefe ulasti',
+                                            level: 'ok',
+                                        },
+                                    ])
+                                }}
                                 onObstacleHit={() => {
                                     setLogs((prev) => [
                                         ...prev.slice(-7),
@@ -289,7 +436,13 @@ export default function App() {
                                 onClose={() => setIsPanelOpen(false)}
                                 selectedMap={selectedMap}
                                 onSelectMap={setSelectedMap}
-                                onStartRover={() => setIsRoverMoving(true)}
+                                selectedTargetGrid={selectedTargetGrid}
+                                onPlanRoute={handlePlanRoute}
+                                onStartRover={() => {
+                                    if (plannedRouteWorld.length < 2) return
+                                    setIsRoverMoving(true)
+                                }}
+                                canStartRover={plannedRouteWorld.length >= 2}
                             />
 
                             <Minimap

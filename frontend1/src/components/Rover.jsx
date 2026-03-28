@@ -10,8 +10,10 @@ export default function Rover({
   rotationY = 0,
   mapId = 'mid-crater',
   isPlaying = false,
+  routePoints = [],
   onPositionChange,
   onObstacleHit,
+  onRouteComplete,
   resetSignal = 0,
 }) {
   const roverRef = useRef();
@@ -24,13 +26,16 @@ export default function Rover({
   const motionRef = useRef({
     x: initialPosition[0],
     z: initialPosition[2],
+    headingY: rotationY,
+    routeIndex: 0,
+    routeCompleted: false,
     impact: 0,
     impactSide: 1,
     passedObstacleIndexes: new Set(),
   });
 
-  const PATH_END_Z = -90;
   const FORWARD_SPEED = 4.3;
+  const ROUTE_SPEED = 5.8;
 
   const obstacles = useMemo(() => {
     const seed = mapId.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) + 1337;
@@ -48,15 +53,22 @@ export default function Rover({
   }, [mapId, initialPosition]);
 
   useEffect(() => {
+    const hasRoute = Array.isArray(routePoints) && routePoints.length > 0;
+    const startX = hasRoute ? routePoints[0][0] : initialPosition[0];
+    const startZ = hasRoute ? routePoints[0][2] : initialPosition[2];
+
     motionRef.current = {
-      x: initialPosition[0],
-      z: initialPosition[2],
+      x: startX,
+      z: startZ,
+      headingY: rotationY,
+      routeIndex: 0,
+      routeCompleted: false,
       impact: 0,
       impactSide: 1,
       passedObstacleIndexes: new Set(),
     };
     emitAccumulatorRef.current = 0;
-  }, [initialPosition, mapId, resetSignal]);
+  }, [initialPosition, mapId, resetSignal, rotationY, routePoints]);
 
   const wheelPositions = useMemo(
     () => [
@@ -90,25 +102,55 @@ export default function Rover({
 
     const motion = motionRef.current;
 
+    const hasRoute = Array.isArray(routePoints) && routePoints.length > 1;
+
     if (isPlaying) {
-      motion.z -= FORWARD_SPEED * delta;
-      if (motion.z < PATH_END_Z) {
-        motion.z = initialPosition[2];
-        motion.passedObstacleIndexes.clear();
+      if (hasRoute) {
+        const nextIndex = Math.min(motion.routeIndex + 1, routePoints.length - 1);
+        const targetPoint = routePoints[nextIndex];
+        const dx = targetPoint[0] - motion.x;
+        const dz = targetPoint[2] - motion.z;
+        const dist = Math.hypot(dx, dz);
+
+        if (dist > 0.0001) {
+          motion.headingY = Math.atan2(dx, dz);
+        }
+
+        if (dist <= 0.08) {
+          motion.x = targetPoint[0];
+          motion.z = targetPoint[2];
+
+          if (motion.routeIndex < routePoints.length - 1) {
+            motion.routeIndex += 1;
+          }
+
+          if (motion.routeIndex >= routePoints.length - 1 && !motion.routeCompleted) {
+            motion.routeCompleted = true;
+            onRouteComplete?.();
+          }
+        } else {
+          const step = Math.min(ROUTE_SPEED * delta, dist);
+          motion.x += (dx / dist) * step;
+          motion.z += (dz / dist) * step;
+        }
+      } else {
+        motion.z -= FORWARD_SPEED * delta;
       }
     }
 
-    for (let i = 0; i < obstacles.length; i++) {
-      if (motion.passedObstacleIndexes.has(i)) continue;
-      const rock = obstacles[i];
-      const dz = Math.abs(motion.z - rock.z);
-      const dx = Math.abs(motion.x - rock.x);
+    if (!hasRoute) {
+      for (let i = 0; i < obstacles.length; i++) {
+        if (motion.passedObstacleIndexes.has(i)) continue;
+        const rock = obstacles[i];
+        const dz = Math.abs(motion.z - rock.z);
+        const dx = Math.abs(motion.x - rock.x);
 
-      if (dz < 0.44 && dx < rock.radius) {
-        motion.impact = 1;
-        motion.impactSide = rock.x >= motion.x ? 1 : -1;
-        motion.passedObstacleIndexes.add(i);
-        onObstacleHit?.(i);
+        if (dz < 0.44 && dx < rock.radius) {
+          motion.impact = 1;
+          motion.impactSide = rock.x >= motion.x ? 1 : -1;
+          motion.passedObstacleIndexes.add(i);
+          onObstacleHit?.(i);
+        }
       }
     }
 
@@ -139,7 +181,7 @@ export default function Rover({
     );
     roverRef.current.rotation.set(
       basePitch + hitPitch,
-      rotationY + hitYaw,
+      motion.headingY + hitYaw,
       baseRoll + hitRoll
     );
 
