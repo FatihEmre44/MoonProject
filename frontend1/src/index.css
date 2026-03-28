@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+    --bg-0: #030406;
+    --bg-1: #050a14;
+    --bg-2: #071322;
+    --neon-cyan: #00f2ff;
+    --vivid-red: #ff3d5f;
+    --panel-glass: rgba(0, 0, 0, 0.6);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    font-family: 'JetBrains Mono', monospace;
+    background:
+        radial-gradient(circle at 18% 16%, rgba(0, 242, 255, 0.13), transparent 26%),
+        radial-gradient(circle at 80% 75%, rgba(0, 242, 255, 0.07), transparent 32%),
+        linear-gradient(130deg, var(--bg-0), var(--bg-1) 42%, var(--bg-2));
+    color: #d8f8ff;
+}
+
+.lunar-background {
+    background:
+        radial-gradient(circle at center, rgba(0, 242, 255, 0.08), transparent 55%),
+        linear-gradient(rgba(0, 242, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 242, 255, 0.06) 1px, transparent 1px);
+    background-size: auto, 42px 42px, 42px 42px;
+    mask-image: radial-gradient(circle at center, black 50%, transparent 96%);
+}
+
+.mission-stage {
+    background: transparent;
+}
+
+.panel-glass {
+    background: transparent;
+    backdrop-filter: blur(2px);
+    border: 1px solid rgba(0, 242, 255, 0.06);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.015),
+        0 8px 18px rgba(0, 0, 0, 0.05);
+}
+
+.close-chip {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 12px rgba(0, 242, 255, 0.12);
+}
+
+.scan-grid {
+    background-image:
+        linear-gradient(rgba(0, 242, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 242, 255, 0.15) 1px, transparent 1px);
+    background-size: 18px 18px;
+}
+
+.log-shell {
+    position: relative;
+    overflow: hidden;
+}
+
+.log-shell::after {
+    content: '';
+    position: absolute;
+    inset: -40% -80%;
+    background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.14), transparent);
+    animation: scan-pass 3.8s linear infinite;
+}
+
+.status-pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.menu-lines span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: var(--neon-cyan);
+    border-radius: 99px;
+    box-shadow: 0 0 14px rgba(0, 242, 255, 0.5);
+}
+
+@keyframes scan-pass {
+    0% {
+        transform: translateX(-65%);
+    }
+
+    100% {
+        transform: translateX(65%);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+}

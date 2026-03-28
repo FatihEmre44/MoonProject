@@ -1,0 +1,28 @@
+{
+    "name": "moon-rover-simulation-frontend",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@react-three/drei": "^10.5.0",
+        "@react-three/fiber": "^9.1.2",
+        "framer-motion": "^12.23.22",
+        "lucide-react": "^0.543.0",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
+        "three": "^0.179.1"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4.1.12",
+        "@vitejs/plugin-react": "^5.0.2",
+        "autoprefixer": "^10.4.21",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.12",
+        "vite": "^7.1.3"
+    }
+}
