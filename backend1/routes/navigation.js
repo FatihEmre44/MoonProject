@@ -1,11 +1,12 @@
 import express from 'express';
 import astar, { astarMulti } from '../utils/astar.js';
 import { calculateTelemetry } from '../utils/telemetry.js';
+import { generateMissionReport } from '../services/llmService.js';
 
 const router = express.Router();
 
 // API Endpoint: Tek Hedef Rota Planlama
-router.post('/plan-route', (req, res) => {
+router.post('/plan-route', async (req, res) => {
     try {
         const { mapGrid, startNode, targetNode, craterMap = {} } = req.body;
 
@@ -57,13 +58,22 @@ router.post('/plan-route', (req, res) => {
         // ── Telemetri Hesapla & Yanıt Gönder ──────────────
         const telemetry = calculateTelemetry(result, mapGrid);
 
+        // ── Gemini AI Analiz Raporu ──────────────
+        const aiReport = await generateMissionReport({
+            batteryUsage: telemetry.batteryUsage,
+            riskScore: telemetry.riskScore,
+            stepCount: result.stats.stepCount,
+            slopeCount: result.stats.slopeCount,
+            craterMap
+        });
+
         res.json({
             success: true,
             path: result.path,
             totalCost: result.totalCost,
             stats: result.stats,
             telemetry,
-            aiReport: `Rota ${result.stats.stepCount} adımda hesaplandı (${result.stats.diagonalCount} çapraz). ${telemetry.status}.`,
+            aiReport,
         });
 
     } catch (error) {
@@ -76,7 +86,7 @@ router.post('/plan-route', (req, res) => {
 });
 
 // API Endpoint: Çoklu Hedef Rota Planlama
-router.post('/plan-multi-route', (req, res) => {
+router.post('/plan-multi-route', async (req, res) => {
     try {
         const { mapGrid, waypoints, craterMap = {} } = req.body;
 
@@ -128,6 +138,16 @@ router.post('/plan-multi-route', (req, res) => {
 
         const telemetry = calculateTelemetry(result, mapGrid);
 
+        // ── Gemini AI Analiz Raporu ──────────────
+        const aiReport = await generateMissionReport({
+            batteryUsage: telemetry.batteryUsage,
+            riskScore: telemetry.riskScore,
+            stepCount: result.stats.stepCount,
+            slopeCount: result.stats.slopeCount,
+            legCount: result.stats.legCount,
+            craterMap
+        });
+
         res.json({
             success: true,
             path: result.path,
@@ -135,7 +155,7 @@ router.post('/plan-multi-route', (req, res) => {
             stats: result.stats,
             legs: result.legs,
             telemetry,
-            aiReport: `Çoklu rota: ${result.stats.legCount} bacak, ${result.stats.stepCount} adım, ${result.stats.waypointCount} durak. ${telemetry.status}.`,
+            aiReport,
         });
 
     } catch (error) {
