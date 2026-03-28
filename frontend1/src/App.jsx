@@ -141,6 +141,11 @@ export default function App() {
     }
 
     const handleResetSimulation = () => {
+        // Kept as animation reset hook; currently no active timeline to reset.
+        setIsRoverFocused(false)
+    }
+
+    const handleReturnToMenu = () => {
         setIsStarted(false)
         setIsPanelOpen(false)
         setIsGridEnabled(true)
@@ -148,6 +153,7 @@ export default function App() {
         setTelemetry(INITIAL_TELEMETRY)
         setTarget(INITIAL_TARGET)
         setLogs(INITIAL_LOGS)
+        setSelectedMap('mid-crater')
     }
 
     return (
@@ -198,6 +204,7 @@ export default function App() {
                                 logs={logs}
                                 target={target}
                                 onResetSimulation={handleResetSimulation}
+                                onReturnToMenu={handleReturnToMenu}
                                 onClose={() => setIsPanelOpen(false)}
                                 selectedMap={selectedMap}
                                 onSelectMap={setSelectedMap}
