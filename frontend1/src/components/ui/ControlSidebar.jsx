@@ -1,12 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { getAllMaps } from '../../utils/terrainUtils'
-import { buildMapDataFromProfile, sendAstarRequest } from '../../utils/buildMapData'
-
-function lineClass(level) {
-    if (level === 'warn') return 'text-rose-400'
-    return 'text-cyan-100/90'
-}
 
 function TelemetryRow({ label, value }) {
     return (
@@ -32,8 +26,10 @@ export default function ControlSidebar({
     onClose,
     selectedMap,
     onSelectMap,
-    onRouteCalculated,
+    selectedTargetGrid,
+    onPlanRoute,
     onStartRover,
+    canStartRover,
 }) {
     const [isMapMenuOpen, setIsMapMenuOpen] = useState(false)
     const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
@@ -45,27 +41,18 @@ export default function ControlSidebar({
             setIsCalculatingRoute(true)
             setRouteStatus(null)
 
-            // 2D harita ve krater verilerini oluştur
-            const mapData = buildMapDataFromProfile(selectedMap)
+            const result = await onPlanRoute?.()
 
-            // Backend A* API'sine gönder
-            const result = await sendAstarRequest(mapData, 'http://localhost:3000', true)
-
-            if (result.success && result.path) {
+            if (result?.success && result.path) {
                 setRouteStatus({
                     type: 'success',
                     message: `✓ Rota hesaplandı: ${result.stats.stepCount} adım`,
                     data: result,
                 })
-
-                // Parent component'e haberdar et
-                if (onRouteCalculated) {
-                    onRouteCalculated(result)
-                }
             } else {
                 setRouteStatus({
                     type: 'error',
-                    message: result.aiReport || 'Rota bulunamadı',
+                    message: result?.aiReport || 'Rota bulunamadı',
                 })
             }
         } catch (error) {
@@ -86,7 +73,7 @@ export default function ControlSidebar({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="pointer-events-auto absolute inset-0 bg-black/0"
+                    className="pointer-events-none absolute inset-0 bg-black/0"
                 />
             )}
 
@@ -132,6 +119,12 @@ export default function ControlSidebar({
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-cyan-200/75">Target Node</span>
                             <span className="text-cyan-100">{target.name}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs">
+                            <span className="text-cyan-200/75">Secili Nokta</span>
+                            <span className="text-cyan-100">
+                                {selectedTargetGrid ? `[${selectedTargetGrid[0]}, ${selectedTargetGrid[1]}]` : 'Hedef secilmedi'}
+                            </span>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-xs">
                             <span className="text-cyan-200/75">Kalan Mesafe</span>
@@ -211,9 +204,13 @@ export default function ControlSidebar({
                             whileTap={{ scale: 0.98 }}
                             whileHover={{ scale: 1.02 }}
                             onClick={onStartRover}
-                            className="mt-4 w-full rounded-lg border border-blue-400/50 bg-blue-500/20 px-3 py-3 text-xs font-bold tracking-[0.2em] text-blue-100 shadow-lg shadow-blue-500/20 transition-all hover:border-blue-300/70 hover:bg-blue-500/30 hover:shadow-blue-500/40"
+                            disabled={!canStartRover}
+                            className={`mt-4 w-full rounded-lg border px-3 py-3 text-xs font-bold tracking-[0.2em] transition-all ${canStartRover
+                                ? 'border-blue-400/50 bg-blue-500/20 text-blue-100 shadow-lg shadow-blue-500/20 hover:border-blue-300/70 hover:bg-blue-500/30 hover:shadow-blue-500/40'
+                                : 'cursor-not-allowed border-slate-400/30 bg-slate-500/10 text-slate-300/70'
+                                }`}
                         >
-                            ▶▶▶ ROVER BAŞLAT ▶▶▶
+                            {canStartRover ? '▶▶▶ ROVER BASLAT ▶▶▶' : 'ONCE ROTA PLANLA'}
                         </motion.button>
                     </section>
                 </div>

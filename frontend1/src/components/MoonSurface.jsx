@@ -5,7 +5,11 @@ import { getTerrainHeight, getMapProfile, seededRandom } from '../utils/terrainU
 /**
  * Moon surface — procedural terrain driven by selectedMap profile.
  */
-export default function MoonSurface({ selectedMap = 'crater-a', isGridEnabled = true }) {
+export default function MoonSurface({
+  selectedMap = 'crater-a',
+  isGridEnabled = true,
+  onSelectTarget,
+}) {
   const planeSize = 210
   const segments = 400
 
@@ -25,7 +29,7 @@ export default function MoonSurface({ selectedMap = 'crater-a', isGridEnabled = 
       pos.setZ(i, h)
 
       const t = Math.max(0, Math.min(1, (h + 8) / 16))
-      colors[i * 3]     = cr + t * range
+      colors[i * 3] = cr + t * range
       colors[i * 3 + 1] = cg + t * range * 0.95
       colors[i * 3 + 2] = cb + t * range * 1.05
     }
@@ -36,8 +40,17 @@ export default function MoonSurface({ selectedMap = 'crater-a', isGridEnabled = 
   }, [selectedMap, planeSize, segments])
 
   return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow>
+    <group
+      onPointerDown={(e) => {
+        e.stopPropagation()
+        onSelectTarget?.({ x: e.point.x, z: e.point.z })
+      }}
+    >
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+        castShadow
+      >
         <primitive object={geometry} attach="geometry" />
         <meshStandardMaterial
           vertexColors
@@ -105,7 +118,7 @@ function Rocks({ count = 2000, spread = 180, mapId = 'crater-a' }) {
   }, [count, spread, mapId])
 
   return (
-    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow>
+    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow raycast={() => null}>
       <dodecahedronGeometry args={[1, 0]} />
       <meshStandardMaterial color="#4a4a4a" roughness={0.95} metalness={0.05} />
     </instancedMesh>
@@ -136,7 +149,7 @@ function Boulders({ count = 150, spread = 170, mapId = 'crater-a' }) {
   }, [count, spread, mapId])
 
   return (
-    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow>
+    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow raycast={() => null}>
       <icosahedronGeometry args={[1, 0]} />
       <meshStandardMaterial color="#3d3d3d" roughness={1} metalness={0.08} />
     </instancedMesh>

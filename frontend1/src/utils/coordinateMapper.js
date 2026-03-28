@@ -28,11 +28,11 @@ export function worldToGrid(worldX, worldZ, options = {}) {
 }
 
 /**
- * Array of [col, row] → Array of [x, y, z] with terrain height.
+ * Backend path [row, col] → Array of [x, y, z] with terrain height.
  */
 export function pathToWorld(path, options = {}) {
   const { yOffset = 0.15, ...rest } = options;
-  return path.map(([col, row]) => {
+  return path.map(([row, col]) => {
     const { x, z } = gridToWorld(col, row, rest);
     const y = getTerrainHeight(x, z) + yOffset;
     return [x, y, z];
