@@ -17,6 +17,7 @@ const INITIAL_TELEMETRY = {
     x: 126.5,
     y: 4.1,
     z: -342.7,
+    temperature: 45.2,
 }
 
 const INITIAL_TARGET = {
@@ -65,6 +66,7 @@ export default function App() {
     const [target, setTarget] = useState(INITIAL_TARGET)
 
     const [logs, setLogs] = useState(INITIAL_LOGS)
+    const [selectedMap, setSelectedMap] = useState('crater-a')
 
     useEffect(() => {
         if (!isStarted) {
@@ -85,6 +87,7 @@ export default function App() {
                     x,
                     y,
                     z,
+                    temperature: Math.max(35, prev.temperature + randomRange(-2, 3)),
                 }
             })
 
@@ -181,6 +184,8 @@ export default function App() {
                                 onToggleGrid={handleToggleGrid}
                                 onResetSimulation={handleResetSimulation}
                                 onClose={() => setIsPanelOpen(false)}
+                                selectedMap={selectedMap}
+                                onSelectMap={setSelectedMap}
                             />
 
                             <Minimap isGridEnabled={isGridEnabled} isStarted={isStarted} />

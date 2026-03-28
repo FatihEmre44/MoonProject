@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 
 function lineClass(level) {
     if (level === 'warn') {
@@ -19,14 +21,22 @@ function TelemetryRow({ label, value }) {
 export default function ControlSidebar({
     isOpen,
     telemetry,
-    logs,
     target,
     isGridEnabled,
     onRecalculatePath,
     onToggleGrid,
     onResetSimulation,
     onClose,
+    selectedMap,
+    onSelectMap,
 }) {
+    const [isMapMenuOpen, setIsMapMenuOpen] = useState(false)
+    const maps = [
+        { id: 'crater-a', label: 'Crater A-19' },
+        { id: 'vallis', label: 'Vallis Marineris' },
+        { id: 'olympus', label: 'Olympus Mons' },
+        { id: 'polar', label: 'Polar Region' },
+    ]
     return (
         <>
             {isOpen && (
@@ -70,19 +80,7 @@ export default function ControlSidebar({
                         <TelemetryRow label="X" value={telemetry.x.toFixed(2)} />
                         <TelemetryRow label="Y" value={telemetry.y.toFixed(2)} />
                         <TelemetryRow label="Z" value={telemetry.z.toFixed(2)} />
-                    </div>
-                </section>
-
-                <section className="mb-5">
-                    <h3 className="mb-2 text-xs tracking-[0.3em] text-cyan-200/70">MISSION STATUS</h3>
-                    <div className="log-shell relative h-36 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
-                        <ul className="space-y-1.5 text-xs">
-                            {logs.slice().reverse().map((entry) => (
-                                <li key={entry.id} className={lineClass(entry.level)}>
-                                    {'>'} {entry.text}
-                                </li>
-                            ))}
-                        </ul>
+                        <TelemetryRow label="Sicaklik" value={`${telemetry.temperature.toFixed(1)} °C`} />
                     </div>
                 </section>
 
@@ -96,6 +94,44 @@ export default function ControlSidebar({
                         <span className="text-cyan-200/75">Remaining Distance</span>
                         <span className="text-cyan-100">{target.distance.toFixed(0)} meters</span>
                     </div>
+                </section>
+
+                <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
+                    <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">MAP SELECTION</h3>
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setIsMapMenuOpen(!isMapMenuOpen)}
+                        className="w-full rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition-all hover:bg-cyan-500/15"
+                    >
+                        {maps.find((m) => m.id === selectedMap)?.label} ▼
+                    </motion.button>
+                    <AnimatePresence>
+                        {isMapMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="mt-2 space-y-2"
+                            >
+                                {maps.map((map) => (
+                                    <motion.button
+                                        key={map.id}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => {
+                                            onSelectMap(map.id)
+                                            setIsMapMenuOpen(false)
+                                        }}
+                                        className={`w-full rounded-lg border px-3 py-2 text-xs transition-all ${selectedMap === map.id
+                                                ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
+                                                : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
+                                            }`}
+                                    >
+                                        ✓ {map.label}
+                                    </motion.button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </section>
 
                 <footer className="mt-auto flex flex-col gap-3">
