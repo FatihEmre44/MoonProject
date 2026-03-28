@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
 import Minimap from './components/ui/Minimap'
+import RouteBot from './components/ui/RouteBot'
 import MoonSurface from './components/MoonSurface'
 import PathLine from './components/PathLine'
 import Lighting from './components/Lighting'
@@ -115,6 +116,8 @@ export default function App() {
     const [roverResetSignal, setRoverResetSignal] = useState(0)
     const [selectedTargetGrid, setSelectedTargetGrid] = useState(null)
     const [plannedRouteWorld, setPlannedRouteWorld] = useState([])
+    const [routeAnalysis, setRouteAnalysis] = useState(null)
+    const [isExplainingRoute, setIsExplainingRoute] = useState(false)
 
     const roverStartPosition = useMemo(() => {
         const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78]
@@ -139,6 +142,7 @@ export default function App() {
         setIsRoverMoving(false)
         setSelectedTargetGrid(null)
         setPlannedRouteWorld([])
+        setRouteAnalysis(null)
         setTarget(INITIAL_TARGET)
         setRoverResetSignal((prev) => prev + 1)
     }, [selectedMap])
@@ -187,6 +191,7 @@ export default function App() {
         )
 
         if (!result?.success || !Array.isArray(result.path)) {
+            setRouteAnalysis(result || null)
             return result
         }
 
@@ -194,6 +199,7 @@ export default function App() {
         setPlannedRouteWorld(worldPath)
         setIsRoverMoving(false)
         setRoverResetSignal((prev) => prev + 1)
+        setRouteAnalysis(result)
 
         setLogs((prev) => [
             ...prev.slice(-7),
@@ -205,6 +211,33 @@ export default function App() {
         ])
 
         return result
+    }
+
+    const handleExplainRoute = async () => {
+        if (!selectedTargetGrid) return
+        try {
+            setIsExplainingRoute(true)
+            setRouteAnalysis((prev) => ({
+                ...(prev || {}),
+                aiReport: 'Rota analizi aliniyor...'
+            }))
+            await handlePlanRoute()
+            setLogs((prev) => [
+                ...prev.slice(-7),
+                {
+                    id: Date.now(),
+                    text: 'Bot rota gerekcesini guncelledi',
+                    level: 'ok',
+                },
+            ])
+        } catch (error) {
+            setRouteAnalysis((prev) => ({
+                ...(prev || {}),
+                aiReport: `Aciklama alinamadi: ${error.message}`,
+            }))
+        } finally {
+            setIsExplainingRoute(false)
+        }
     }
 
     useEffect(() => {
@@ -280,6 +313,7 @@ export default function App() {
         setPlannedRouteWorld([])
         setSelectedTargetGrid(null)
         setTarget(INITIAL_TARGET)
+        setRouteAnalysis(null)
     }
 
     const handleReturnToMenu = () => {
@@ -294,6 +328,7 @@ export default function App() {
         setSelectedMap('mid-crater')
         setSelectedTargetGrid(null)
         setPlannedRouteWorld([])
+        setRouteAnalysis(null)
         setRoverResetSignal((prev) => prev + 1)
     }
 
@@ -452,6 +487,16 @@ export default function App() {
                                 isRoverFocused={isRoverFocused}
                                 onToggleGrid={handleToggleGrid}
                                 onToggleRoverFocus={() => setIsRoverFocused((prev) => !prev)}
+                            />
+
+                            <RouteBot
+                                isStarted={isStarted}
+                                message={routeAnalysis?.aiReport || null}
+                                riskScore={routeAnalysis?.telemetry?.riskScore || null}
+                                status={routeAnalysis?.telemetry?.status || null}
+                                hasRoute={plannedRouteWorld.length >= 2}
+                                isExplaining={isExplainingRoute}
+                                onExplainRoute={handleExplainRoute}
                             />
                         </>
                     )}
