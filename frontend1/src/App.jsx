@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import IntroScreen from './components/ui/IntroScreen'
@@ -9,6 +9,7 @@ import MoonSurface from './components/MoonSurface'
 import Lighting from './components/Lighting'
 import Stars from './components/Stars'
 import Rover from './components/Rover'
+import { getTerrainHeight } from './utils/terrainUtils'
 
 const INITIAL_TELEMETRY = {
     speed: 1.85,
@@ -41,16 +42,12 @@ const missionMessages = [
     'Subsurface scan complete',
 ]
 
-const ROVER_PATH = [
-    [-50, 0, -60],
-    [-20, 0, -40],
-    [0, 0, -10],
-    [30, 0, 20],
-    [50, 0, 50],
-    [40, 0, 80],
-    [0, 0, 90],
-    [-40, 0, 70],
-]
+const ROVER_ANCHORS = {
+    'crater-a': [0, 0, 78],
+    vallis: [0, 0, 78],
+    olympus: [0, 0, 78],
+    polar: [0, 0, 78],
+}
 
 function randomRange(min, max) {
     return Math.random() * (max - min) + min
@@ -67,6 +64,11 @@ export default function App() {
 
     const [logs, setLogs] = useState(INITIAL_LOGS)
     const [selectedMap, setSelectedMap] = useState('crater-a')
+
+    const roverPosition = useMemo(() => {
+        const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78]
+        return [x, getTerrainHeight(x, z) + 0.48, z]
+    }, [selectedMap])
 
     useEffect(() => {
         if (!isStarted) {
@@ -155,7 +157,7 @@ export default function App() {
                             <Stars />
                             <Lighting />
                             <MoonSurface isGridEnabled={isGridEnabled} />
-                            <Rover path={ROVER_PATH} isPlaying={isStarted} speed={1} />
+                            <Rover position={roverPosition} rotationY={Math.PI} />
                         </Suspense>
                     </Canvas>
                 )}
