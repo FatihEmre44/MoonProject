@@ -128,27 +128,69 @@ const DIRECTIONS = [
 ];
 
 /**
- * 8 yönlü engellere (krater/engel=1) olan yakınlığı kontrol eder.
- * Herhangi bir komşuda 1 varsa risk cezası (+3) döndürür.
+ * 8 yönlü engellere ve yokuşlara olan yakınlığı kontrol eder (Terrain-Aware).
+ * craterMap dizisinden krater özelliklerini (derinlik, yarıçap) hesaplar.
  * @param {number[][]} grid - Harita
+ * @param {Object} craterMap - Krater verisi: { "r,c": { depth, radius } }
  * @param {number} r - Kontrol edilecek satır
  * @param {number} c - Kontrol edilecek sütun
- * @returns {number} Risk cezası (temizse 0, riskliyse +3)
+ * @returns {number} Toplam dinamik risk cezası
  */
-function getRiskPenalty(grid, r, c) {
+function getRiskPenalty(grid, craterMap, r, c) {
   const rows = grid.length;
   const cols = grid[0].length;
+  let penalty = 0;
+
+  let obstacleCount = 0;
+  let slopeCount = 0;
+  const isTargetSlope = grid[r][c] === 2;
 
   for (const [dr, dc] of DIRECTIONS) {
     const nr = r + dr;
     const nc = c + dc;
     if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
       if (grid[nr][nc] === 1) {
-        return 3; // Engele komşu
+        obstacleCount++;
+      } else if (grid[nr][nc] === 2) {
+        slopeCount++;
       }
     }
   }
-  return 0;
+
+  // 1. Kural: Krater yoğunluğu
+  penalty += obstacleCount * 1.5;
+
+  // 2. Kural: Yokuş yoğunluğu (üst üste çoklu yokuş durumu)
+  if (isTargetSlope) {
+    penalty += slopeCount * 1.0;
+  }
+
+  // 3. Kural: craterMap üzerinden Gerçekçi Krater Modellemesi
+  if (craterMap && typeof craterMap === 'object') {
+    for (const key in craterMap) {
+      const [cr, cc] = key.split(',').map(Number);
+      const crater = craterMap[key];
+      const { depth, radius } = crater;
+
+      // Euclidean uzaklık: Pisagor
+      const dist = Math.sqrt(Math.pow(r - cr, 2) + Math.pow(c - cc, 2));
+
+      // Etki alanı içerisindeyse (1 - dist/radius)
+      if (dist <= radius) {
+        // Derinlik bazlı taban ceza
+        const basePenalty = depth > 100 ? 8 : 2;
+        penalty += basePenalty * (1 - dist / radius);
+      }
+
+      // Kenar eğimi kuralı: Chebyshev (8-yönlü komşuluk) mesafesi tam 1 ise (kratere yapışıksa)
+      const chebyshevDist = Math.max(Math.abs(r - cr), Math.abs(c - cc));
+      if (chebyshevDist === 1) {
+        penalty += 3; // Kenar eğimi zorluğu
+      }
+    }
+  }
+
+  return penalty;
 }
 
 // ─────────────────────────────────────────────
@@ -160,11 +202,12 @@ function getRiskPenalty(grid, r, c) {
  * 8 yönlü hareket destekler, çapraz adımlarda maliyet × √2 uygulanır.
  *
  * @param {number[][]} grid  - 2D grid (0 = güvenli, 1 = engel, 2 = yokuş)
+ * @param {Object}     craterMap - Krater objesi
  * @param {number[]}   start - Başlangıç [satır, sütun]
  * @param {number[]}   end   - Hedef [satır, sütun]
  * @returns {{ path: number[][], totalCost: number, stats: object } | null}
  */
-function astar(grid, start, end) {
+function astar(grid, craterMap = {}, start, end) {
   const rows = grid.length;
   const cols = grid[0].length;
 
@@ -250,7 +293,7 @@ function astar(grid, start, end) {
 
       // Çapraz adımlarda maliyet × √2
       const moveCost = isDiagonal ? baseCost * SQRT2 : baseCost;
-      const riskPenalty = getRiskPenalty(grid, nr, nc);
+      const riskPenalty = getRiskPenalty(grid, craterMap, nr, nc);
       const tentativeG = gScore[row][col] + moveCost + riskPenalty;
 
       if (tentativeG < gScore[nr][nc]) {
@@ -287,7 +330,7 @@ function astar(grid, start, end) {
  * // result.legs[1] = { from: [2,4], to: [6,1], cost: 7.2, steps: 6 }
  * // ...
  */
-function astarMulti(grid, waypoints) {
+function astarMulti(grid, craterMap = {}, waypoints) {
   if (!waypoints || waypoints.length < 2) {
     return null;
   }
@@ -304,7 +347,7 @@ function astarMulti(grid, waypoints) {
     const from = waypoints[i];
     const to = waypoints[i + 1];
 
-    const legResult = astar(grid, from, to);
+    const legResult = astar(grid, craterMap, from, to);
 
     // Herhangi bir bacak başarısız olursa tüm rota başarısız
     if (!legResult) {

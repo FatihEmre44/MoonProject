@@ -86,7 +86,7 @@ test('1.1 — Basit düz yol (engelsiz 3x3)', () => {
     [0, 0, 0],
     [0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [2, 2]);
+  const result = astar(grid, {}, [0, 0], [2, 2]);
   assertNotNull(result, 'Yol bulunmalıydı');
   assertPathValid(result.path, grid, [0, 0], [2, 2]);
   assertEqual(result.path.length, 3, 'Yol uzunluğu çapraz adımlarla 3 olmalı');
@@ -97,7 +97,7 @@ test('1.2 — Aynı noktaya gitme (start === end)', () => {
     [0, 0],
     [0, 0],
   ];
-  const result = astar(grid, [0, 0], [0, 0]);
+  const result = astar(grid, {}, [0, 0], [0, 0]);
   assertNotNull(result, 'Aynı noktaya yol bulunmalı');
   assertEqual(result.path.length, 1, 'Yol tek bir nokta olmalı');
   assertEqual(result.path[0], [0, 0]);
@@ -107,7 +107,7 @@ test('1.2 — Aynı noktaya gitme (start === end)', () => {
 
 test('1.3 — Yatay düz yol', () => {
   const grid = [[0, 0, 0, 0, 0]];
-  const result = astar(grid, [0, 0], [0, 4]);
+  const result = astar(grid, {}, [0, 0], [0, 4]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [0, 0], [0, 4]);
   assertEqual(result.path.length, 5);
@@ -116,7 +116,7 @@ test('1.3 — Yatay düz yol', () => {
 
 test('1.4 — Dikey düz yol', () => {
   const grid = [[0], [0], [0], [0], [0]];
-  const result = astar(grid, [0, 0], [4, 0]);
+  const result = astar(grid, {}, [0, 0], [4, 0]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [0, 0], [4, 0]);
   assertEqual(result.path.length, 5);
@@ -125,7 +125,7 @@ test('1.4 — Dikey düz yol', () => {
 
 test('1.5 — 1x1 grid', () => {
   const grid = [[0]];
-  const result = astar(grid, [0, 0], [0, 0]);
+  const result = astar(grid, {}, [0, 0], [0, 0]);
   assertNotNull(result);
   assertEqual(result.path.length, 1);
   assertEqual(result.totalCost, 0);
@@ -142,7 +142,7 @@ test('2.1 — Basit engelden kaçınma', () => {
     [0, 0, 0],
     [0, 1, 0],
   ];
-  const result = astar(grid, [0, 0], [0, 2]);
+  const result = astar(grid, {}, [0, 0], [0, 2]);
   assertNotNull(result, 'Engelin etrafından dolanmalı');
   assertPathValid(result.path, grid, [0, 0], [0, 2]);
 });
@@ -153,7 +153,7 @@ test('2.2 — Tam kapalı hedef (yol yok)', () => {
     [0, 1, 1],
     [0, 1, 0],
   ];
-  const result = astar(grid, [0, 0], [2, 2]);
+  const result = astar(grid, {}, [0, 0], [2, 2]);
   assertNull(result, 'Hedef çevrelenmiş, yol olmamalı');
 });
 
@@ -162,7 +162,7 @@ test('2.3 — Başlangıç noktası engel', () => {
     [1, 0],
     [0, 0],
   ];
-  const result = astar(grid, [0, 0], [1, 1]);
+  const result = astar(grid, {}, [0, 0], [1, 1]);
   assertNull(result, 'Başlangıç engel olunca yol olmamalı');
 });
 
@@ -171,7 +171,7 @@ test('2.4 — Hedef noktası engel', () => {
     [0, 0],
     [0, 1],
   ];
-  const result = astar(grid, [0, 0], [1, 1]);
+  const result = astar(grid, {}, [0, 0], [1, 1]);
   assertNull(result, 'Hedef engel olunca yol olmamalı');
 });
 
@@ -183,7 +183,7 @@ test('2.5 — Labirent testi', () => {
     [1, 1, 0, 1, 0],
     [0, 0, 0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [4, 4]);
+  const result = astar(grid, {}, [0, 0], [4, 4]);
   assertNotNull(result, 'Labirentte yol bulunmalı');
   assertPathValid(result.path, grid, [0, 0], [4, 4]);
 });
@@ -193,7 +193,7 @@ test('2.6 — Tamamen kapalı harita', () => {
     [0, 1],
     [1, 0],
   ];
-  const result = astar(grid, [0, 0], [1, 1]);
+  const result = astar(grid, {}, [0, 0], [1, 1]);
   assertNull(result, 'Çapraz bağlantı yok, yol olmamalı');
 });
 
@@ -207,7 +207,7 @@ test('3.1 — Yokuştan kaçınma (uzun ama ucuz yol tercih)', () => {
     [0, 2, 0],
     [0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [0, 2]);
+  const result = astar(grid, {}, [0, 0], [0, 2]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [0, 0], [0, 2]);
   // Alttan dolanma maliyeti: 4 — yokuştan geçme: 6
@@ -222,7 +222,7 @@ test('3.2 — Mecburi yokuş (başka yol yok)', () => {
     [1, 2, 1],
     [0, 2, 0],
   ];
-  const result = astar(grid, [0, 0], [0, 2]);
+  const result = astar(grid, {}, [0, 0], [0, 2]);
   assertNotNull(result, 'Mecburen yokuştan geçmeli');
   assertPathValid(result.path, grid, [0, 0], [0, 2]);
   if (result.stats.slopeCount === 0) {
@@ -238,7 +238,7 @@ test('3.3 — Uzun düz yol vs kısa yokuşlu yol', () => {
     [1, 1, 1, 1, 1, 1, 0],
     [0, 0, 0, 0, 0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [4, 0]);
+  const result = astar(grid, {}, [0, 0], [4, 0]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [0, 0], [4, 0]);
 });
@@ -248,7 +248,7 @@ test('3.4 — Çoklu yokuş maliyeti birikimi', () => {
     [0, 2, 2, 2, 0],
     [0, 0, 0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [0, 4]);
+  const result = astar(grid, {}, [0, 0], [0, 4]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [0, 0], [0, 4]);
   // Üst yol (yokuşlardan): 5+5+5+1 = 16
@@ -264,7 +264,7 @@ test('3.5 — Tek yokuş hücresi, geçmeye değer mi?', () => {
     [0, 2, 0],
     [0, 0, 0],
   ];
-  const result = astar(grid, [1, 0], [1, 2]);
+  const result = astar(grid, {}, [1, 0], [1, 2]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [1, 0], [1, 2]);
   if (result.totalCost > 4) {
@@ -280,13 +280,13 @@ console.log('\n📦 GRUP 4: Sınır Durumları (Edge Cases)\n');
 
 test('4.1 — Grid dışı başlangıç koordinatı', () => {
   const grid = [[0, 0], [0, 0]];
-  const result = astar(grid, [-1, 0], [1, 1]);
+  const result = astar(grid, {}, [-1, 0], [1, 1]);
   assertNull(result, 'Negatif koordinat, null dönmeli');
 });
 
 test('4.2 — Grid dışı hedef koordinatı', () => {
   const grid = [[0, 0], [0, 0]];
-  const result = astar(grid, [0, 0], [5, 5]);
+  const result = astar(grid, {}, [0, 0], [5, 5]);
   assertNull(result, 'Grid dışı hedef, null dönmeli');
 });
 
@@ -294,7 +294,7 @@ test('4.3 — Büyük grid performansı (50x50)', () => {
   const size = 50;
   const grid = Array.from({ length: size }, () => new Array(size).fill(0));
   const start = performance.now();
-  const result = astar(grid, [0, 0], [size - 1, size - 1]);
+  const result = astar(grid, {}, [0, 0], [size - 1, size - 1]);
   const elapsed = performance.now() - start;
   assertNotNull(result, '50x50 düz gridde yol bulunmalı');
   assertPathValid(result.path, grid, [0, 0], [size - 1, size - 1]);
@@ -313,7 +313,7 @@ test('4.4 — Büyük grid performansı (200x200)', () => {
     grid[r][c] = 1;
   }
   const start = performance.now();
-  const result = astar(grid, [0, 0], [size - 1, size - 1]);
+  const result = astar(grid, {}, [0, 0], [size - 1, size - 1]);
   const elapsed = performance.now() - start;
   if (result) {
     console.log(`     200x200 grid: ${elapsed.toFixed(1)}ms, yol: ${result.path.length} adım, maliyet: ${result.totalCost}`);
@@ -338,7 +338,7 @@ console.log('\n📦 GRUP 5: Dönüş Formatı { path, totalCost, stats }\n');
 
 test('5.1 — Dönüş objesi doğru yapıda mı?', () => {
   const grid = [[0, 0], [0, 0]];
-  const result = astar(grid, [0, 0], [1, 1]);
+  const result = astar(grid, {}, [0, 0], [1, 1]);
   assertNotNull(result);
   if (typeof result !== 'object' || Array.isArray(result)) {
     throw new Error(`Dönüş bir obje olmalı, gelen: ${typeof result}`);
@@ -356,7 +356,7 @@ test('5.1 — Dönüş objesi doğru yapıda mı?', () => {
 
 test('5.2 — stats alanları doğru mu?', () => {
   const grid = [[0, 0], [0, 0]];
-  const result = astar(grid, [0, 0], [1, 1]);
+  const result = astar(grid, {}, [0, 0], [1, 1]);
   const { stats } = result;
 
   if (typeof stats.stepCount !== 'number') {
@@ -382,7 +382,7 @@ test('5.3 — totalCost düz yolda doğru hesaplanıyor mu (çapraz vs düz)?', 
     [0, 0, 0],
     [0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [2, 2]);
+  const result = astar(grid, {}, [0, 0], [2, 2]);
   assertEqual(result.totalCost, 2.83, '2 çapraz adım yakl 2.83 maliyetlidir');
   assertEqual(result.stats.slopeCount, 0, 'Düz yolda slopeCount 0 olmalı');
 });
@@ -393,10 +393,10 @@ test('5.4 — totalCost yokuşlu yolda doğru hesaplanıyor mu?', () => {
     [0, 2, 0],
     [1, 1, 1],
   ];
-  const result = astar(grid, [0, 0], [0, 2]);
+  const result = astar(grid, {}, [0, 0], [0, 2]);
   assertNotNull(result, 'Yokuştan geçmeli');
-  // Yol: [0,0] → [0,1](yokuş=5, risk=3) → [0,2](düz=1, risk=3) = toplam 12
-  assertEqual(result.totalCost, 12, 'Yokuş + risk = 8, düz + risk = 4. Toplam = 12');
+  // Yol: [0,0] → [0,1](yokuş=5, risk=4.5) → [0,2](düz=1, risk=3) = toplam 13.5
+  assertEqual(result.totalCost, 13.5, 'Yokuş + krater density risk hesabı');
   assertEqual(result.stats.slopeCount, 1, 'Bir yokuş hücresi');
   assertEqual(result.stats.flatCount, 1, 'Bir düz hücre');
   assertEqual(result.stats.stepCount, 2, 'Toplam 2 adım');
@@ -404,7 +404,7 @@ test('5.4 — totalCost yokuşlu yolda doğru hesaplanıyor mu?', () => {
 
 test('5.5 — totalCost sıfır maliyet (start === end)', () => {
   const grid = [[0]];
-  const result = astar(grid, [0, 0], [0, 0]);
+  const result = astar(grid, {}, [0, 0], [0, 0]);
   assertEqual(result.totalCost, 0, 'Aynı noktada maliyet 0');
   assertEqual(result.stats.stepCount, 0, 'Adım yok');
   assertEqual(result.stats.slopeCount, 0);
@@ -413,7 +413,7 @@ test('5.5 — totalCost sıfır maliyet (start === end)', () => {
 
 test('5.6 — path koordinatları hâlâ [r, c] formatında mı?', () => {
   const grid = [[0, 0], [0, 0]];
-  const result = astar(grid, [0, 0], [1, 1]);
+  const result = astar(grid, {}, [0, 0], [1, 1]);
   for (const coord of result.path) {
     if (!Array.isArray(coord) || coord.length !== 2) {
       throw new Error(`Koordinat [r,c] olmalı, gelen: ${JSON.stringify(coord)}`);
@@ -430,7 +430,7 @@ test('5.7 — Karmaşık yolda stats tutarlılığı', () => {
     [0, 1, 2, 0],
     [0, 0, 0, 0],
   ];
-  const result = astar(grid, [0, 0], [0, 3]);
+  const result = astar(grid, {}, [0, 0], [0, 3]);
   assertNotNull(result);
   assertPathValid(result.path, grid, [0, 0], [0, 3]);
 
@@ -446,17 +446,22 @@ test('5.7 — Karmaşık yolda stats tutarlılığı', () => {
 
     // Risk cezasını manuel hesapla
     let risk = 0;
+    let obsCount = 0;
+    let slpCount = 0;
     const rows = grid.length;
     const cols = grid[0].length;
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
         if (dr === 0 && dc === 0) continue;
         const nr = r + dr, nc = c + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] === 1) {
-          risk = 3;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          if (grid[nr][nc] === 1) obsCount++;
+          else if (grid[nr][nc] === 2) slpCount++;
         }
       }
     }
+    risk += obsCount * 1.5;
+    if (grid[r][c] === 2) risk += slpCount * 1.0;
 
     manualCost += (isDiagonal ? baseCost * Math.SQRT2 : baseCost) + risk;
 
@@ -474,34 +479,73 @@ test('5.7 — Karmaşık yolda stats tutarlılığı', () => {
 // ═══════════════════════════════════════
 // GRUP 6: SERVER.JS ENTEGRASYON ANALİZİ
 // ═══════════════════════════════════════
-console.log('\n📦 GRUP 6: server.js Entegrasyon Analizi\n');
+console.log('\n📦 GRUP 6: API Entegrasyon Analizi\n');
 
-test('6.1 — server.js A* entegrasyonu kontrolü', () => {
-  const serverContent = fs.readFileSync(
-    path.join(__dirname, '..', 'server.js'), 'utf-8'
+test('6.1 — navigation.js A* entegrasyonu kontrolü', () => {
+  const routerContent = fs.readFileSync(
+    path.join(__dirname, '..', 'routes', 'navigation.js'), 'utf-8'
   );
-  const usesAstar = serverContent.includes("import astar") ||
-                    serverContent.includes('import { astar }');
+  const usesAstar = routerContent.includes("import astar") ||
+                    routerContent.includes('import { astar }');
   if (!usesAstar) {
     throw new Error(
-      'server.js henüz astar modülünü import etmiyor!\n' +
-      '   findPath fonksiyonu sahte (stub) — gerçek A* ile değiştirilmeli.'
+      'navigation.js henüz astar modülünü import etmiyor!\n' +
+      '   findPath fonksiyonu gerçek A* ile değiştirilmeli.'
     );
   }
 });
 
 test('6.2 — Input validation kontrolü', () => {
-  const serverContent = fs.readFileSync(
-    path.join(__dirname, '..', 'server.js'), 'utf-8'
+  const routerContent = fs.readFileSync(
+    path.join(__dirname, '..', 'routes', 'navigation.js'), 'utf-8'
   );
-  const hasValidation = serverContent.includes('mapGrid') &&
-    (serverContent.includes('!mapGrid') || serverContent.includes('Array.isArray'));
+  const hasValidation = routerContent.includes('mapGrid') &&
+    (routerContent.includes('!mapGrid') || routerContent.includes('Array.isArray'));
   if (!hasValidation) {
     throw new Error(
-      'server.js\'de input validation yok!\n' +
+      'navigation.js içinde input validation yok!\n' +
       '   mapGrid, startNode, targetNode için tip ve sınır kontrolü eklenmeli.'
     );
   }
+});
+
+// ═══════════════════════════════════════
+// GRUP 7: CRATERMAP (GERÇEKÇİ KRATER) ANALİZİ
+// ═══════════════════════════════════════
+console.log('\n📦 GRUP 7: CraterMap Analizi\n');
+
+test('7.1 — Derin kraterden kaçınma (depth > 100)', () => {
+  const grid = [
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0]
+  ];
+  // Merkezde (1,1) ölümcül bir krater var
+  const craterMap = {
+    "1,1": { depth: 500, radius: 2 }
+  };
+  
+  const resultObj = astar(grid, craterMap, [0, 0], [0, 3]);
+  const resultEmpty = astar(grid, {}, [0, 0], [0, 3]);
+  
+  assertNotNull(resultObj, 'CraterMap ile yol bulunmalı');
+  if (resultObj.totalCost <= resultEmpty.totalCost) {
+    throw new Error('CraterMap eklendiğinde aynı rotanın maliyeti kesinlikle artmış olmalıdır.');
+  }
+});
+
+test('7.2 — Kenar Eğimi (Chebyshev dist = 1) kontrolü', () => {
+  const grid = [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0]
+  ];
+  const craterMap = { "1,1": { depth: 20, radius: 1 } };
+  
+  const result = astar(grid, craterMap, [0, 0], [0, 1]);
+  // Base cost(1) + depth penalty(2 * (1 - 1/1) = 0) + rim penalty(3) = 4. 
+  assertEqual(result.totalCost, 4, 'Kenar eğimi cezası tam +3 olarak uygulanmalıdır');
 });
 
 // ═══════════════════════════════════════
