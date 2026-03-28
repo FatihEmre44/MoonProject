@@ -1,0 +1,304 @@
+/* ============================
+   Moon Rover — Global Styles
+   ============================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --neon-green: #39ff14;
+  --neon-blue: #00d4ff;
+  --neon-purple: #b347d9;
+  --dark-bg: #000000;
+  --panel-bg: rgba(10, 15, 30, 0.75);
+  --panel-border: rgba(0, 212, 255, 0.25);
+  --text-primary: #e0e6ed;
+  --text-secondary: #8892a4;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Rajdhani', sans-serif;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dark-bg);
+  font-family: var(--font-body);
+  color: var(--text-primary);
+}
+
+/* ============================
+   HUD Overlay
+   ============================ */
+
+.hud-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud-panel {
+  pointer-events: auto;
+  position: absolute;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow:
+    0 0 20px rgba(0, 212, 255, 0.08),
+    inset 0 0 30px rgba(0, 212, 255, 0.03);
+}
+
+.hud-panel.top-left {
+  top: 20px;
+  left: 20px;
+  min-width: 260px;
+}
+
+.hud-panel.bottom-center {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hud-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--neon-blue);
+  margin-bottom: 16px;
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hud-row:last-child {
+  border-bottom: none;
+}
+
+.hud-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.hud-value {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neon-green);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.4);
+}
+
+/* ============================
+   Buttons
+   ============================ */
+
+.hud-btn {
+  pointer-events: auto;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 22px;
+  border: 1px solid var(--neon-blue);
+  border-radius: 6px;
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--neon-blue);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 6px rgba(0, 212, 255, 0.4);
+}
+
+.hud-btn:hover {
+  background: rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.hud-btn:active {
+  transform: translateY(0);
+}
+
+.hud-btn.primary {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  background: rgba(57, 255, 20, 0.08);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.4);
+}
+
+.hud-btn.primary:hover {
+  background: rgba(57, 255, 20, 0.2);
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+}
+
+.hud-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ============================
+   Status indicator
+   ============================ */
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.active {
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+.status-dot.idle {
+  background: var(--text-secondary);
+  box-shadow: none;
+  animation: none;
+}
+
+.status-dot.finished {
+  background: var(--neon-blue);
+  box-shadow: 0 0 8px var(--neon-blue);
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============================
+   Mini-Map
+   ============================ */
+
+.minimap-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 15;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(10, 15, 30, 0.8);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow:
+    0 0 24px rgba(0, 212, 255, 0.1),
+    inset 0 0 20px rgba(0, 212, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.minimap-header {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--neon-blue);
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+  width: 100%;
+  text-align: center;
+}
+
+.minimap-icon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.minimap-canvas {
+  border-radius: 6px;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  image-rendering: pixelated;
+  width: 200px;
+  height: 200px;
+}
+
+.minimap-coords {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--neon-green);
+  text-shadow: 0 0 6px rgba(57, 255, 20, 0.3);
+  letter-spacing: 1px;
+}
+
+/* ============================
+   Loading screen
+   ============================ */
+
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--dark-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  gap: 20px;
+}
+
+.loading-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: var(--neon-blue);
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+}
+
+.loading-bar-track {
+  width: 200px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  width: 30%;
+  background: var(--neon-blue);
+  border-radius: 2px;
+  box-shadow: 0 0 10px var(--neon-blue);
+  animation: loading-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
