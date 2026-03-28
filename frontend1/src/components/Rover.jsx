@@ -1,211 +1,122 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 
 /**
- * Rover — a detailed space-vehicle (lunar rover) that animates along a path.
+ * Rover — redesigned stylized rover parked on the map.
  */
-export default function Rover({
-  path = [],
-  isPlaying = false,
-  speed = 1,
-  onStep,
-  onFinish,
-}) {
-  const groupRef = useRef();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const progressRef = useRef(0);
-  const currentIndexRef = useRef(0);
-  const hasFinished = useRef(false);
-  const wheelRefs = [useRef(), useRef(), useRef(), useRef()];
+export default function Rover({ position = [0, 0, 0], rotationY = 0 }) {
+  const roverRef = useRef();
 
-  // Reset when playback stops
-  useEffect(() => {
-    if (!isPlaying) {
-      setCurrentIndex(0);
-      currentIndexRef.current = 0;
-      progressRef.current = 0;
-      hasFinished.current = false;
+  const wheels = useMemo(
+    () => [
+      [-0.58, -0.2, 0.54],
+      [0, -0.2, 0.58],
+      [0.58, -0.2, 0.54],
+      [-0.58, -0.2, -0.54],
+      [0, -0.2, -0.58],
+      [0.58, -0.2, -0.54],
+    ],
+    []
+  );
 
-      if (groupRef.current && path.length > 0) {
-        const [x, y, z] = path[0];
-        groupRef.current.position.set(x, y + 0.35, z);
-      }
-    }
-  }, [isPlaying, path]);
-
-  useFrame((_, delta) => {
-    if (!isPlaying || path.length < 2 || !groupRef.current) return;
-    if (hasFinished.current) return;
-
-    const idx = currentIndexRef.current;
-    if (idx >= path.length - 1) {
-      hasFinished.current = true;
-      onFinish?.();
-      return;
-    }
-
-    progressRef.current += delta * speed;
-
-    if (progressRef.current >= 1) {
-      progressRef.current = 0;
-      const nextIdx = idx + 1;
-      currentIndexRef.current = nextIdx;
-      setCurrentIndex(nextIdx);
-      onStep?.(nextIdx);
-
-      if (nextIdx >= path.length - 1) {
-        const [fx, fy, fz] = path[path.length - 1];
-        groupRef.current.position.set(fx, fy + 0.35, fz);
-        hasFinished.current = true;
-        onFinish?.();
-        return;
-      }
-    }
-
-    // Lerp position
-    const ci = currentIndexRef.current;
-    const [cx, cy, cz] = path[ci];
-    const [nx, ny, nz] = path[Math.min(ci + 1, path.length - 1)];
-    const t = progressRef.current;
-
-    groupRef.current.position.set(
-      THREE.MathUtils.lerp(cx, nx, t),
-      THREE.MathUtils.lerp(cy, ny, t) + 0.35,
-      THREE.MathUtils.lerp(cz, nz, t)
-    );
-
-    // Face movement direction
-    if (ci < path.length - 1) {
-      const dir = new THREE.Vector3(nx - cx, 0, nz - cz);
-      if (dir.length() > 0.001) {
-        const angle = Math.atan2(dir.x, dir.z);
-        groupRef.current.rotation.y = THREE.MathUtils.lerp(
-          groupRef.current.rotation.y,
-          angle,
-          0.15
-        );
-      }
-    }
-
-    // Spin wheels
-    wheelRefs.forEach((ref) => {
-      if (ref.current) ref.current.rotation.x += delta * speed * 6;
-    });
+  useFrame((state) => {
+    if (!roverRef.current) return;
+    // Keep the rover alive with a subtle sensor bounce.
+    roverRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 1.8) * 0.015;
   });
 
-  if (path.length === 0) return null;
-  const [sx, sy, sz] = path[0];
-
   return (
-    <group ref={groupRef} position={[sx, sy + 0.35, sz]}>
-      {/* ── Main body (angular spacecraft hull) ── */}
-      <mesh castShadow>
-        <boxGeometry args={[0.9, 0.22, 1.3]} />
-        <meshStandardMaterial color="#b8b8c0" roughness={0.4} metalness={0.85} />
+    <group ref={roverRef} position={position} rotation={[0, rotationY, 0]}>
+      {/* Chassis */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[1.35, 0.24, 1.5]} />
+        <meshStandardMaterial color="#c9ced4" roughness={0.48} metalness={0.72} />
       </mesh>
 
-      {/* Body side accents */}
-      <mesh position={[0.46, 0, 0]} castShadow>
-        <boxGeometry args={[0.02, 0.18, 1.2]} />
-        <meshStandardMaterial color="#ff6600" emissive="#ff4400" emissiveIntensity={0.3} roughness={0.5} metalness={0.6} />
-      </mesh>
-      <mesh position={[-0.46, 0, 0]} castShadow>
-        <boxGeometry args={[0.02, 0.18, 1.2]} />
-        <meshStandardMaterial color="#ff6600" emissive="#ff4400" emissiveIntensity={0.3} roughness={0.5} metalness={0.6} />
+      {/* Front wedge */}
+      <mesh position={[0, -0.02, 0.9]} castShadow>
+        <boxGeometry args={[0.98, 0.14, 0.34]} />
+        <meshStandardMaterial color="#9099a3" roughness={0.55} metalness={0.7} />
       </mesh>
 
-      {/* ── Top cabin / sensor dome ── */}
-      <mesh position={[0, 0.2, -0.1]} castShadow>
-        <boxGeometry args={[0.55, 0.18, 0.65]} />
-        <meshStandardMaterial color="#1a1a2e" roughness={0.2} metalness={0.9} />
+      {/* Cabin */}
+      <mesh position={[0, 0.23, 0.02]} castShadow>
+        <boxGeometry args={[0.8, 0.3, 0.86]} />
+        <meshStandardMaterial color="#222934" roughness={0.22} metalness={0.88} />
       </mesh>
-      {/* Visor */}
-      <mesh position={[0, 0.22, 0.24]} castShadow>
-        <boxGeometry args={[0.48, 0.1, 0.06]} />
-        <meshStandardMaterial color="#00bfff" emissive="#00bfff" emissiveIntensity={0.6} transparent opacity={0.8} roughness={0.1} metalness={1} />
+      <mesh position={[0, 0.27, 0.48]} castShadow>
+        <boxGeometry args={[0.58, 0.14, 0.05]} />
+        <meshStandardMaterial
+          color="#83ddff"
+          emissive="#26c8ff"
+          emissiveIntensity={0.65}
+          transparent
+          opacity={0.92}
+          roughness={0.12}
+          metalness={0.75}
+        />
       </mesh>
 
-      {/* ── Solar panels ── */}
-      <group position={[0.75, 0.15, 0]}>
-        {/* Arm */}
-        <mesh><boxGeometry args={[0.3, 0.03, 0.05]} /><meshStandardMaterial color="#888" metalness={0.9} roughness={0.3} /></mesh>
-        {/* Panel */}
-        <mesh position={[0.2, 0, 0]}><boxGeometry args={[0.55, 0.02, 0.85]} /><meshStandardMaterial color="#0d1b4c" roughness={0.3} metalness={0.6} emissive="#0a2472" emissiveIntensity={0.15} /></mesh>
-        {/* Panel grid lines */}
-        <mesh position={[0.2, 0.012, 0]}><boxGeometry args={[0.54, 0.002, 0.01]} /><meshStandardMaterial color="#1a3a7a" emissive="#2060c0" emissiveIntensity={0.3} /></mesh>
-      </group>
-      <group position={[-0.75, 0.15, 0]} scale={[-1, 1, 1]}>
-        <mesh><boxGeometry args={[0.3, 0.03, 0.05]} /><meshStandardMaterial color="#888" metalness={0.9} roughness={0.3} /></mesh>
-        <mesh position={[0.2, 0, 0]}><boxGeometry args={[0.55, 0.02, 0.85]} /><meshStandardMaterial color="#0d1b4c" roughness={0.3} metalness={0.6} emissive="#0a2472" emissiveIntensity={0.15} /></mesh>
-        <mesh position={[0.2, 0.012, 0]}><boxGeometry args={[0.54, 0.002, 0.01]} /><meshStandardMaterial color="#1a3a7a" emissive="#2060c0" emissiveIntensity={0.3} /></mesh>
-      </group>
+      {/* Side rails */}
+      <mesh position={[0.72, 0.02, 0]} castShadow>
+        <boxGeometry args={[0.06, 0.2, 1.44]} />
+        <meshStandardMaterial color="#f6b84a" roughness={0.5} metalness={0.52} />
+      </mesh>
+      <mesh position={[-0.72, 0.02, 0]} castShadow>
+        <boxGeometry args={[0.06, 0.2, 1.44]} />
+        <meshStandardMaterial color="#f6b84a" roughness={0.5} metalness={0.52} />
+      </mesh>
 
-      {/* ── Wheels (4) ── */}
-      {[
-        [-0.5, -0.22, 0.45],
-        [0.5, -0.22, 0.45],
-        [-0.5, -0.22, -0.45],
-        [0.5, -0.22, -0.45],
-      ].map(([wx, wy, wz], i) => (
-        <group key={i} position={[wx, wy, wz]}>
-          {/* Wheel suspension arm */}
-          <mesh position={[wx > 0 ? -0.12 : 0.12, 0.08, 0]}>
-            <boxGeometry args={[0.15, 0.03, 0.04]} />
-            <meshStandardMaterial color="#666" metalness={0.8} roughness={0.4} />
+      {/* Mast and sensors */}
+      <mesh position={[0, 0.58, -0.12]} castShadow>
+        <cylinderGeometry args={[0.03, 0.03, 0.42, 12]} />
+        <meshStandardMaterial color="#d7dbe0" roughness={0.32} metalness={0.92} />
+      </mesh>
+      <mesh position={[0, 0.83, -0.08]} castShadow>
+        <boxGeometry args={[0.34, 0.1, 0.2]} />
+        <meshStandardMaterial color="#1f2733" roughness={0.25} metalness={0.84} />
+      </mesh>
+      <mesh position={[0, 0.83, 0.02]}>
+        <sphereGeometry args={[0.04, 12, 12]} />
+        <meshStandardMaterial color="#64f5e6" emissive="#29d9ce" emissiveIntensity={1.4} />
+      </mesh>
+
+      {/* Communication dish */}
+      <mesh position={[-0.42, 0.5, -0.32]} rotation={[0.45, 0.2, -0.25]} castShadow>
+        <cylinderGeometry args={[0.16, 0.03, 0.05, 20]} />
+        <meshStandardMaterial color="#e1e5ea" roughness={0.35} metalness={0.85} />
+      </mesh>
+
+      {/* Rear battery pack */}
+      <mesh position={[0, 0.06, -0.88]} castShadow>
+        <boxGeometry args={[0.9, 0.18, 0.24]} />
+        <meshStandardMaterial color="#474f5b" roughness={0.5} metalness={0.64} />
+      </mesh>
+
+      {/* Wheels */}
+      {wheels.map(([x, y, z], index) => (
+        <group key={index} position={[x, y, z]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.19, 0.19, 0.16, 20]} />
+            <meshStandardMaterial color="#20242b" roughness={0.9} metalness={0.28} />
           </mesh>
-          {/* Wheel */}
-          <mesh ref={wheelRefs[i]} rotation={[0, 0, Math.PI / 2]} castShadow>
-            <cylinderGeometry args={[0.14, 0.14, 0.1, 16]} />
-            <meshStandardMaterial color="#2a2a2a" roughness={0.9} metalness={0.4} />
-          </mesh>
-          {/* Wheel hub */}
           <mesh rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.06, 0.06, 0.11, 8]} />
-            <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
+            <cylinderGeometry args={[0.08, 0.08, 0.17, 10]} />
+            <meshStandardMaterial color="#97a0ac" roughness={0.25} metalness={0.92} />
           </mesh>
         </group>
       ))}
 
-      {/* ── Antenna ── */}
-      <mesh position={[0.25, 0.55, -0.35]} castShadow>
-        <cylinderGeometry args={[0.012, 0.008, 0.55, 6]} />
-        <meshStandardMaterial color="#ccc" metalness={0.95} roughness={0.2} />
+      {/* Lights */}
+      <mesh position={[0.26, 0, 1.07]}>
+        <sphereGeometry args={[0.045, 10, 10]} />
+        <meshStandardMaterial color="#fffbe8" emissive="#fffbe8" emissiveIntensity={2.8} />
       </mesh>
-      {/* Antenna tip (blinking light) */}
-      <mesh position={[0.25, 0.83, -0.35]}>
-        <sphereGeometry args={[0.035, 8, 8]} />
-        <meshStandardMaterial color="#ff2222" emissive="#ff0000" emissiveIntensity={2} />
+      <mesh position={[-0.26, 0, 1.07]}>
+        <sphereGeometry args={[0.045, 10, 10]} />
+        <meshStandardMaterial color="#fffbe8" emissive="#fffbe8" emissiveIntensity={2.8} />
       </mesh>
-      {/* Dish */}
-      <mesh position={[-0.2, 0.45, -0.3]} rotation={[0.3, 0.2, 0]} castShadow>
-        <cylinderGeometry args={[0.15, 0.02, 0.04, 12]} />
-        <meshStandardMaterial color="#ddd" metalness={0.8} roughness={0.3} />
-      </mesh>
-
-      {/* ── Headlights ── */}
-      <mesh position={[0.25, 0.02, 0.66]}>
-        <sphereGeometry args={[0.045, 8, 8]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={3} />
-      </mesh>
-      <mesh position={[-0.25, 0.02, 0.66]}>
-        <sphereGeometry args={[0.045, 8, 8]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={3} />
-      </mesh>
-      <spotLight position={[0, 0.05, 0.7]} target-position={[0, -0.5, 3]} angle={0.4} penumbra={0.6} intensity={4} distance={8} color="#ffffee" />
-
-      {/* ── Tail lights ── */}
-      <mesh position={[0.3, 0.02, -0.66]}>
-        <sphereGeometry args={[0.03, 6, 6]} />
-        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1.5} />
-      </mesh>
-      <mesh position={[-0.3, 0.02, -0.66]}>
-        <sphereGeometry args={[0.03, 6, 6]} />
-        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={1.5} />
-      </mesh>
-
-      {/* ── Neon underglow ── */}
-      <pointLight position={[0, -0.15, 0]} color="#39ff14" intensity={3} distance={4} decay={2} />
+      <pointLight position={[0, 0.04, 1.1]} intensity={1.3} color="#fff4d1" distance={5} />
     </group>
   );
 }
