@@ -35,25 +35,25 @@ export default function MoonSurface({
     for (let i = 0; i < pos.count; i++) {
       const lx = pos.getX(i)
       const ly = pos.getY(i)
-      
+
       // Kenardan uzakligi hesapla ve edge factor belirle
       const dist = Math.hypot(lx, ly)
       const edgeFactor = Math.max(
         0,
         Math.min(1, (dist - fadeStart) / (mapRadius - fadeStart))
       )
-      
+
       // Kenar yuksekligini dusur (crater rim efekti)
       let h = getTerrainHeight(lx, -ly, selectedMap)
       h = h * (1 - edgeFactor * 0.4) // Kenarlar %40 daha alçak
-      
+
       pos.setZ(i, h)
 
       const t = Math.max(0, Math.min(1, (h + 8) / 16))
       const baseR = cr + t * range
       const baseG = cg + t * range * 0.95
       const baseB = cb + t * range * 1.05
-      
+
       // Kenar karartilmasi guclendirme
       const edgeDark = Math.max(0.15, 1 - edgeFactor * 0.85)
 
@@ -71,7 +71,8 @@ export default function MoonSurface({
     <group
       onPointerDown={(e) => {
         e.stopPropagation()
-        onSelectTarget?.({ x: e.point.x, z: e.point.z })
+        if (e.button !== 0 && e.button !== 2) return
+        onSelectTarget?.({ x: e.point.x, z: e.point.z, button: e.button })
       }}
     >
       <mesh

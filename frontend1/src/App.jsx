@@ -228,11 +228,13 @@ export default function App() {
   const [roverRouteIndex, setRoverRouteIndex] = useState(0);
   const [routeAnalysis, setRouteAnalysis] = useState(null);
   const [isExplainingRoute, setIsExplainingRoute] = useState(false);
+  const [customRoverAnchors, setCustomRoverAnchors] = useState({});
 
   const roverStartPosition = useMemo(() => {
-    const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78];
+    const override = customRoverAnchors[selectedMap];
+    const [x, z] = override ?? (ROVER_ANCHORS[selectedMap] ? [ROVER_ANCHORS[selectedMap][0], ROVER_ANCHORS[selectedMap][2]] : [0, 78]);
     return [x, getTerrainHeight(x, z, selectedMap) + 0.48, z];
-  }, [selectedMap]);
+  }, [customRoverAnchors, selectedMap]);
 
   const [roverLivePosition, setRoverLivePosition] =
     useState(roverStartPosition);
@@ -258,7 +260,40 @@ export default function App() {
     setRoverResetSignal((prev) => prev + 1);
   }, [selectedMap]);
 
-  const handleTerrainTargetSelect = ({ x, z }) => {
+  const handleTerrainTargetSelect = ({ x, z, button = 0 }) => {
+    if (button === 2) {
+      if (isRoverMoving) {
+        setLogs((prev) => [
+          ...prev.slice(-7),
+          {
+            id: Date.now(),
+            text: "Rover hareket ederken baslangic konumu degistirilemez",
+            level: "warn",
+          },
+        ]);
+        return;
+      }
+
+      const y = getTerrainHeight(x, z, selectedMap) + 0.48;
+      setCustomRoverAnchors((prev) => ({ ...prev, [selectedMap]: [x, z] }));
+      setIsRoverMoving(false);
+      setPlannedRouteWorld([]);
+      setSelectedTargetGrid(null);
+      setRouteAnalysis(null);
+      setRoverRouteIndex(0);
+      setRoverLivePosition([x, y, z]);
+      setRoverResetSignal((prev) => prev + 1);
+      setLogs((prev) => [
+        ...prev.slice(-7),
+        {
+          id: Date.now(),
+          text: "Rover baslangic konumu sag tik ile guncellendi",
+          level: "ok",
+        },
+      ]);
+      return;
+    }
+
     const { row, col } = worldToGrid(x, z);
     const clampedRow = Math.max(0, Math.min(199, row));
     const clampedCol = Math.max(0, Math.min(199, col));
@@ -449,7 +484,10 @@ export default function App() {
   };
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-obsidian text-cyan-50">
+    <main
+      className="relative h-screen w-screen overflow-hidden bg-obsidian text-cyan-50"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="absolute inset-0 lunar-background" aria-hidden="true" />
 
       <motion.section
@@ -585,11 +623,10 @@ export default function App() {
                         key={map.id}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setSelectedMap(map.id)}
-                        className={`w-full rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${
-                          selectedMap === map.id
-                            ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100"
-                            : "border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10"
-                        }`}
+                        className={`w-full rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${selectedMap === map.id
+                          ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100"
+                          : "border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10"
+                          }`}
                       >
                         {map.icon} {map.label}
                       </motion.button>
@@ -651,8 +688,6 @@ export default function App() {
               <RouteBot
                 isStarted={isStarted}
                 message={routeAnalysis?.aiReport || null}
-                riskScore={routeAnalysis?.telemetry?.riskScore || null}
-                status={routeAnalysis?.telemetry?.status || null}
                 hasRoute={plannedRouteWorld.length >= 2}
                 isExplaining={isExplainingRoute}
                 onExplainRoute={handleExplainRoute}
