@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import IntroScreen from './components/ui/IntroScreen'
 import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
 import Minimap from './components/ui/Minimap'
@@ -78,6 +77,7 @@ function CameraController({ roverPosition, isRoverFocused }) {
 
 export default function App() {
     const [isStarted, setIsStarted] = useState(false)
+    const [isRoverMoving, setIsRoverMoving] = useState(false)
     const [isPanelOpen, setIsPanelOpen] = useState(false)
     const [isGridEnabled, setIsGridEnabled] = useState(true)
     const [telemetry, setTelemetry] = useState(INITIAL_TELEMETRY)
@@ -99,7 +99,7 @@ export default function App() {
     }, [roverStartPosition])
 
     useEffect(() => {
-        if (!isStarted) return undefined
+        if (!isRoverMoving) return undefined
 
         const timer = setInterval(() => {
             setTelemetry((prev) => {
@@ -133,7 +133,7 @@ export default function App() {
         }, 950)
 
         return () => clearInterval(timer)
-    }, [isStarted])
+    }, [isRoverMoving])
 
     const handleToggleGrid = () => {
         setIsGridEnabled((prev) => !prev)
@@ -149,6 +149,7 @@ export default function App() {
 
     const handleResetSimulation = () => {
         // Reset rover motion timeline.
+        setIsRoverMoving(false)
         setIsRoverFocused(false)
         setRoverResetSignal((prev) => prev + 1)
         setRoverLivePosition(roverStartPosition)
@@ -156,6 +157,7 @@ export default function App() {
 
     const handleReturnToMenu = () => {
         setIsStarted(false)
+        setIsRoverMoving(false)
         setIsPanelOpen(false)
         setIsGridEnabled(true)
         setIsRoverFocused(false)
@@ -189,7 +191,7 @@ export default function App() {
                                 initialPosition={roverStartPosition}
                                 rotationY={Math.PI}
                                 mapId={selectedMap}
-                                isPlaying={isStarted}
+                                isPlaying={isRoverMoving}
                                 resetSignal={roverResetSignal}
                                 onPositionChange={setRoverLivePosition}
                                 onObstacleHit={() => {
@@ -214,7 +216,59 @@ export default function App() {
 
             <div className="pointer-events-none absolute inset-0 z-50">
                 <AnimatePresence mode="wait">
-                    {!isStarted && <IntroScreen key="intro" onStart={() => setIsStarted(true)} />}
+                    {!isStarted && (
+                        <motion.div
+                            key="intro"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0, transition: { duration: 0.35 } }}
+                            className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/40 p-6"
+                        >
+                            <motion.div
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ duration: 0.7, ease: 'easeOut' }}
+                                className="panel-glass w-full max-w-xl rounded-3xl p-8 text-center"
+                            >
+                                <p className="mb-2 text-xs tracking-[0.45em] text-cyan-200/80">LUNAR ROVER CONTROL</p>
+                                <h1 className="mb-6 text-2xl font-semibold tracking-[0.2em] text-cyan-100">
+                                    MISSION CONTROL HUD
+                                </h1>
+
+                                <div className="mb-6">
+                                    <h3 className="mb-3 text-xs tracking-[0.25em] text-cyan-200/70">HARİTA SEÇ</h3>
+                                    <div className="space-y-2">
+                                        {[
+                                            { id: 'low-crater', label: 'Mare Tranquillitatis', icon: '○' },
+                                            { id: 'mid-crater', label: 'Oceanus Procellarum', icon: '◎' },
+                                            { id: 'high-crater', label: 'Tycho Highlands', icon: '◉' },
+                                        ].map((map) => (
+                                            <motion.button
+                                                key={map.id}
+                                                whileTap={{ scale: 0.98 }}
+                                                onClick={() => setSelectedMap(map.id)}
+                                                className={`w-full rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${selectedMap === map.id
+                                                    ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
+                                                    : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
+                                                    }`}
+                                            >
+                                                {map.icon} {map.label}
+                                            </motion.button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <motion.button
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => setIsStarted(true)}
+                                    className="w-full rounded-xl border border-blue-400/50 bg-blue-500/20 px-6 py-4 text-sm font-bold tracking-[0.3em] text-blue-100 shadow-lg shadow-blue-500/20 transition-all hover:border-blue-300/70 hover:bg-blue-500/30 hover:shadow-blue-500/40"
+                                >
+                                    ▶▶▶ BAŞLAT ▶▶▶
+                                </motion.button>
+                            </motion.div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
 
                 <AnimatePresence>
@@ -235,6 +289,7 @@ export default function App() {
                                 onClose={() => setIsPanelOpen(false)}
                                 selectedMap={selectedMap}
                                 onSelectMap={setSelectedMap}
+                                onStartRover={() => setIsRoverMoving(true)}
                             />
 
                             <Minimap

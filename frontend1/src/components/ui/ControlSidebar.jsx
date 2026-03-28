@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { getAllMaps } from '../../utils/terrainUtils'
+import { buildMapDataFromProfile, sendAstarRequest } from '../../utils/buildMapData'
 
 function lineClass(level) {
     if (level === 'warn') return 'text-rose-400'
@@ -31,9 +32,52 @@ export default function ControlSidebar({
     onClose,
     selectedMap,
     onSelectMap,
+    onRouteCalculated,
+    onStartRover,
 }) {
     const [isMapMenuOpen, setIsMapMenuOpen] = useState(false)
+    const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
+    const [routeStatus, setRouteStatus] = useState(null)
     const maps = getAllMaps()
+
+    const handlePlanRoute = async () => {
+        try {
+            setIsCalculatingRoute(true)
+            setRouteStatus(null)
+
+            // 2D harita ve krater verilerini oluştur
+            const mapData = buildMapDataFromProfile(selectedMap)
+
+            // Backend A* API'sine gönder
+            const result = await sendAstarRequest(mapData, 'http://localhost:3000', true)
+
+            if (result.success && result.path) {
+                setRouteStatus({
+                    type: 'success',
+                    message: `✓ Rota hesaplandı: ${result.stats.stepCount} adım`,
+                    data: result,
+                })
+
+                // Parent component'e haberdar et
+                if (onRouteCalculated) {
+                    onRouteCalculated(result)
+                }
+            } else {
+                setRouteStatus({
+                    type: 'error',
+                    message: result.aiReport || 'Rota bulunamadı',
+                })
+            }
+        } catch (error) {
+            console.error('Rota planlama hatası:', error)
+            setRouteStatus({
+                type: 'error',
+                message: `Hata: ${error.message}`,
+            })
+        } finally {
+            setIsCalculatingRoute(false)
+        }
+    }
 
     return (
         <>
@@ -136,6 +180,41 @@ export default function ControlSidebar({
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            whileHover={{ scale: 1.01 }}
+                            onClick={handlePlanRoute}
+                            disabled={isCalculatingRoute}
+                            className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-xs font-medium tracking-[0.15em] transition-all ${isCalculatingRoute
+                                ? 'cursor-wait border-amber-300/40 bg-amber-500/10 text-amber-200/70'
+                                : 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20'
+                                }`}
+                        >
+                            {isCalculatingRoute ? '⊙ ROTA HESAPLANIYYOR...' : '▶ ROTA PLANLA'}
+                        </motion.button>
+
+                        {routeStatus && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`mt-2 rounded-lg border px-2.5 py-2 text-[10px] ${routeStatus.type === 'success'
+                                    ? 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
+                                    : 'border-rose-300/30 bg-rose-500/10 text-rose-100'
+                                    }`}
+                            >
+                                {routeStatus.message}
+                            </motion.div>
+                        )}
+
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            whileHover={{ scale: 1.02 }}
+                            onClick={onStartRover}
+                            className="mt-4 w-full rounded-lg border border-blue-400/50 bg-blue-500/20 px-3 py-3 text-xs font-bold tracking-[0.2em] text-blue-100 shadow-lg shadow-blue-500/20 transition-all hover:border-blue-300/70 hover:bg-blue-500/30 hover:shadow-blue-500/40"
+                        >
+                            ▶▶▶ ROVER BAŞLAT ▶▶▶
+                        </motion.button>
                     </section>
                 </div>
 
