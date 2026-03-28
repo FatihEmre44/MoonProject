@@ -1,240 +1,270 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
-import { getAllMaps } from '../../utils/terrainUtils'
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { getAllMaps } from "../../utils/terrainUtils";
 
 function TelemetryRow({ label, value }) {
-    return (
-        <div className="flex items-center justify-between border-b border-cyan-300/15 py-2 text-xs">
-            <span className="text-cyan-200/70">{label}</span>
-            <span className="text-cyan-100">{value}</span>
-        </div>
-    )
+  return (
+    <div className="flex items-center justify-between border-b border-cyan-300/15 py-2 text-xs">
+      <span className="text-cyan-200/70">{label}</span>
+      <span className="text-cyan-100">{value}</span>
+    </div>
+  );
 }
 
 const CRATER_ICONS = {
-    'low-crater': '○',
-    'mid-crater': '◎',
-    'high-crater': '◉',
-}
+  "low-crater": "○",
+  "mid-crater": "◎",
+  "high-crater": "◉",
+};
 
 export default function ControlSidebar({
-    isOpen,
-    telemetry,
-    target,
-    onResetSimulation,
-    onReturnToMenu,
-    onClose,
-    selectedMap,
-    onSelectMap,
-    selectedTargetGrid,
-    onPlanRoute,
-    onStartRover,
-    canStartRover,
+  isOpen,
+  telemetry,
+  target,
+  onResetSimulation,
+  onReturnToMenu,
+  onClose,
+  selectedMap,
+  onSelectMap,
+  selectedTargetGrid,
+  onPlanRoute,
+  onStartRover,
+  canStartRover,
 }) {
-    const [isMapMenuOpen, setIsMapMenuOpen] = useState(false)
-    const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
-    const [routeStatus, setRouteStatus] = useState(null)
-    const maps = getAllMaps()
+  const [isMapMenuOpen, setIsMapMenuOpen] = useState(false);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [routeStatus, setRouteStatus] = useState(null);
+  const maps = getAllMaps();
 
-    const handlePlanRoute = async () => {
-        try {
-            setIsCalculatingRoute(true)
-            setRouteStatus(null)
+  const handlePlanRoute = async () => {
+    try {
+      setIsCalculatingRoute(true);
+      setRouteStatus(null);
 
-            const result = await onPlanRoute?.()
+      const result = await onPlanRoute?.();
 
-            if (result?.success && result.path) {
-                setRouteStatus({
-                    type: 'success',
-                    message: `✓ Rota hesaplandı: ${result.stats.stepCount} adım`,
-                    data: result,
-                })
-            } else {
-                setRouteStatus({
-                    type: 'error',
-                    message: result?.aiReport || 'Rota bulunamadı',
-                })
-            }
-        } catch (error) {
-            console.error('Rota planlama hatası:', error)
-            setRouteStatus({
-                type: 'error',
-                message: `Hata: ${error.message}`,
-            })
-        } finally {
-            setIsCalculatingRoute(false)
-        }
+      if (result?.success && result.path) {
+        setRouteStatus({
+          type: "success",
+          message: `✓ Rota hesaplandı: ${result.stats.stepCount} adım`,
+          data: result,
+        });
+      } else {
+        setRouteStatus({
+          type: "error",
+          message: result?.aiReport || "Rota bulunamadı",
+        });
+      }
+    } catch (error) {
+      console.error("Rota planlama hatası:", error);
+      setRouteStatus({
+        type: "error",
+        message: `Hata: ${error.message}`,
+      });
+    } finally {
+      setIsCalculatingRoute(false);
     }
+  };
 
-    return (
-        <>
-            {isOpen && (
+  return (
+    <>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="pointer-events-none absolute inset-0 bg-black/0"
+        />
+      )}
+
+      <motion.aside
+        initial={{ x: "-100%" }}
+        animate={{ x: isOpen ? 0 : "-100%" }}
+        transition={{ type: "spring", stiffness: 160, damping: 23 }}
+        className="panel-glass pointer-events-auto absolute left-0 top-0 flex h-full w-full max-w-md flex-col rounded-r-3xl p-6"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="close-chip absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/14 bg-black/0 text-sm text-cyan-100/70 transition-colors hover:border-cyan-200/35 hover:bg-cyan-950/12 hover:text-cyan-50"
+          aria-label="Close panel"
+        >
+          ×
+        </button>
+
+        <header className="mb-6 border-b border-cyan-300/20 pb-4">
+          <div className="mb-2 flex items-center gap-3">
+            <span className="status-pulse inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            <h2 className="text-sm tracking-[0.22em] text-cyan-100">
+              ROVER OS v1.0 - ACTIVE
+            </h2>
+          </div>
+          <p className="text-[11px] text-cyan-200/70">LUNAR LINK ONLINE</p>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <section className="mb-5">
+            <h3 className="mb-2 text-xs tracking-[0.3em] text-cyan-200/70">
+              TELEMETRY
+            </h3>
+            <div className="rounded-xl border border-cyan-300/10 bg-black/0 px-3">
+              <TelemetryRow
+                label="Anlık Hız"
+                value={`${(telemetry.speed / 100).toFixed(2)} m/s`}
+              />
+              <TelemetryRow
+                label="Pitch"
+                value={`${telemetry.pitch.toFixed(1)} deg`}
+              />
+              <TelemetryRow
+                label="Roll"
+                value={`${telemetry.roll.toFixed(1)} deg`}
+              />
+              <TelemetryRow
+                label="Sıcaklık"
+                value={`${telemetry.temperature.toFixed(1)} °C`}
+              />
+              <TelemetryRow label="X" value={telemetry.x.toFixed(2)} />
+              <TelemetryRow label="Y" value={telemetry.y.toFixed(2)} />
+              <TelemetryRow label="Z" value={telemetry.z.toFixed(2)} />
+            </div>
+          </section>
+
+          <section className="mb-5 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
+            <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">
+              TARGET INFO
+            </h3>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-cyan-200/75">Target Node</span>
+              <span className="text-cyan-100">{target.name}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs">
+              <span className="text-cyan-200/75">Secili Nokta</span>
+              <span className="text-cyan-100">
+                {selectedTargetGrid
+                  ? `[${selectedTargetGrid[0]}, ${selectedTargetGrid[1]}]`
+                  : "Hedef secilmedi"}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs">
+              <span className="text-cyan-200/75">Kalan Mesafe</span>
+              <span className="text-cyan-100">
+                {target.distance.toFixed(0)} m
+              </span>
+            </div>
+          </section>
+
+          <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
+            <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">
+              HARİTA SEÇİMİ
+            </h3>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsMapMenuOpen(!isMapMenuOpen)}
+              className="w-full rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition-all hover:bg-cyan-500/15"
+            >
+              {CRATER_ICONS[selectedMap] || "◎"}{" "}
+              {maps.find((m) => m.id === selectedMap)?.label || "Map"} ▼
+            </motion.button>
+            <AnimatePresence>
+              {isMapMenuOpen && (
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="pointer-events-none absolute inset-0 bg-black/0"
-                />
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="mt-2 space-y-2"
+                >
+                  {maps.map((map) => (
+                    <motion.button
+                      key={map.id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        onSelectMap(map.id);
+                        setIsMapMenuOpen(false);
+                      }}
+                      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${
+                        selectedMap === map.id
+                          ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100"
+                          : "border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-xs font-medium">
+                        <span>{CRATER_ICONS[map.id]}</span>
+                        {map.label}
+                      </div>
+                      <p className="mt-0.5 text-[10px] text-cyan-200/50">
+                        {map.description}
+                      </p>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
+              onClick={handlePlanRoute}
+              disabled={isCalculatingRoute}
+              className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-xs font-medium tracking-[0.15em] transition-all ${
+                isCalculatingRoute
+                  ? "cursor-wait border-amber-300/40 bg-amber-500/10 text-amber-200/70"
+                  : "border-emerald-300/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20"
+              }`}
+            >
+              {isCalculatingRoute ? "⊙ ROTA HESAPLANIYYOR..." : "▶ ROTA PLANLA"}
+            </motion.button>
+
+            {routeStatus && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`mt-2 rounded-lg border px-2.5 py-2 text-[10px] ${
+                  routeStatus.type === "success"
+                    ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+                    : "border-rose-300/30 bg-rose-500/10 text-rose-100"
+                }`}
+              >
+                {routeStatus.message}
+              </motion.div>
             )}
 
-            <motion.aside
-                initial={{ x: '-100%' }}
-                animate={{ x: isOpen ? 0 : '-100%' }}
-                transition={{ type: 'spring', stiffness: 160, damping: 23 }}
-                className="panel-glass pointer-events-auto absolute left-0 top-0 flex h-full w-full max-w-md flex-col rounded-r-3xl p-6"
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
+              onClick={onStartRover}
+              disabled={!canStartRover}
+              className={`mt-4 w-full rounded-lg border px-3 py-3 text-xs font-bold tracking-[0.2em] transition-all ${
+                canStartRover
+                  ? "border-blue-400/50 bg-blue-500/20 text-blue-100 shadow-lg shadow-blue-500/20 hover:border-blue-300/70 hover:bg-blue-500/30 hover:shadow-blue-500/40"
+                  : "cursor-not-allowed border-slate-400/30 bg-slate-500/10 text-slate-300/70"
+              }`}
             >
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="close-chip absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/14 bg-black/0 text-sm text-cyan-100/70 transition-colors hover:border-cyan-200/35 hover:bg-cyan-950/12 hover:text-cyan-50"
-                    aria-label="Close panel"
-                >
-                    ×
-                </button>
+              {canStartRover ? "▶▶▶ ROVER BASLAT ▶▶▶" : "ONCE ROTA PLANLA"}
+            </motion.button>
+          </section>
+        </div>
 
-                <header className="mb-6 border-b border-cyan-300/20 pb-4">
-                    <div className="mb-2 flex items-center gap-3">
-                        <span className="status-pulse inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                        <h2 className="text-sm tracking-[0.22em] text-cyan-100">ROVER OS v1.0 - ACTIVE</h2>
-                    </div>
-                    <p className="text-[11px] text-cyan-200/70">LUNAR LINK ONLINE</p>
-                </header>
+        <footer className="mt-auto flex flex-col gap-3">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.01 }}
+            onClick={onResetSimulation}
+            className="rounded-xl border border-rose-400/45 bg-rose-500/15 px-4 py-3 text-xs tracking-[0.2em] text-rose-200"
+          >
+            SİMÜLASYONU SIFIRLA
+          </motion.button>
 
-                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                    <section className="mb-5">
-                        <h3 className="mb-2 text-xs tracking-[0.3em] text-cyan-200/70">TELEMETRY</h3>
-                        <div className="rounded-xl border border-cyan-300/10 bg-black/0 px-3">
-                            <TelemetryRow label="Anlık Hız" value={`${telemetry.speed.toFixed(2)} m/s`} />
-                            <TelemetryRow label="Pitch" value={`${telemetry.pitch.toFixed(1)} deg`} />
-                            <TelemetryRow label="Roll" value={`${telemetry.roll.toFixed(1)} deg`} />
-                            <TelemetryRow label="Sıcaklık" value={`${telemetry.temperature.toFixed(1)} °C`} />
-                            <TelemetryRow label="X" value={telemetry.x.toFixed(2)} />
-                            <TelemetryRow label="Y" value={telemetry.y.toFixed(2)} />
-                            <TelemetryRow label="Z" value={telemetry.z.toFixed(2)} />
-                        </div>
-                    </section>
-
-                    <section className="mb-5 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
-                        <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">TARGET INFO</h3>
-                        <div className="flex items-center justify-between text-xs">
-                            <span className="text-cyan-200/75">Target Node</span>
-                            <span className="text-cyan-100">{target.name}</span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-xs">
-                            <span className="text-cyan-200/75">Secili Nokta</span>
-                            <span className="text-cyan-100">
-                                {selectedTargetGrid ? `[${selectedTargetGrid[0]}, ${selectedTargetGrid[1]}]` : 'Hedef secilmedi'}
-                            </span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-xs">
-                            <span className="text-cyan-200/75">Kalan Mesafe</span>
-                            <span className="text-cyan-100">{target.distance.toFixed(0)} m</span>
-                        </div>
-                    </section>
-
-                    <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
-                        <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">HARİTA SEÇİMİ</h3>
-                        <motion.button
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setIsMapMenuOpen(!isMapMenuOpen)}
-                            className="w-full rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition-all hover:bg-cyan-500/15"
-                        >
-                            {CRATER_ICONS[selectedMap] || '◎'}{' '}
-                            {maps.find((m) => m.id === selectedMap)?.label || 'Map'} ▼
-                        </motion.button>
-                        <AnimatePresence>
-                            {isMapMenuOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -8 }}
-                                    className="mt-2 space-y-2"
-                                >
-                                    {maps.map((map) => (
-                                        <motion.button
-                                            key={map.id}
-                                            whileTap={{ scale: 0.98 }}
-                                            onClick={() => {
-                                                onSelectMap(map.id)
-                                                setIsMapMenuOpen(false)
-                                            }}
-                                            className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${selectedMap === map.id
-                                                ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
-                                                : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-2 text-xs font-medium">
-                                                <span>{CRATER_ICONS[map.id]}</span>
-                                                {map.label}
-                                            </div>
-                                            <p className="mt-0.5 text-[10px] text-cyan-200/50">{map.description}</p>
-                                        </motion.button>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <motion.button
-                            whileTap={{ scale: 0.98 }}
-                            whileHover={{ scale: 1.01 }}
-                            onClick={handlePlanRoute}
-                            disabled={isCalculatingRoute}
-                            className={`mt-3 w-full rounded-lg border px-3 py-2.5 text-xs font-medium tracking-[0.15em] transition-all ${isCalculatingRoute
-                                ? 'cursor-wait border-amber-300/40 bg-amber-500/10 text-amber-200/70'
-                                : 'border-emerald-300/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20'
-                                }`}
-                        >
-                            {isCalculatingRoute ? '⊙ ROTA HESAPLANIYYOR...' : '▶ ROTA PLANLA'}
-                        </motion.button>
-
-                        {routeStatus && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`mt-2 rounded-lg border px-2.5 py-2 text-[10px] ${routeStatus.type === 'success'
-                                    ? 'border-emerald-300/30 bg-emerald-500/10 text-emerald-100'
-                                    : 'border-rose-300/30 bg-rose-500/10 text-rose-100'
-                                    }`}
-                            >
-                                {routeStatus.message}
-                            </motion.div>
-                        )}
-
-                        <motion.button
-                            whileTap={{ scale: 0.98 }}
-                            whileHover={{ scale: 1.02 }}
-                            onClick={onStartRover}
-                            disabled={!canStartRover}
-                            className={`mt-4 w-full rounded-lg border px-3 py-3 text-xs font-bold tracking-[0.2em] transition-all ${canStartRover
-                                ? 'border-blue-400/50 bg-blue-500/20 text-blue-100 shadow-lg shadow-blue-500/20 hover:border-blue-300/70 hover:bg-blue-500/30 hover:shadow-blue-500/40'
-                                : 'cursor-not-allowed border-slate-400/30 bg-slate-500/10 text-slate-300/70'
-                                }`}
-                        >
-                            {canStartRover ? '▶▶▶ ROVER BASLAT ▶▶▶' : 'ONCE ROTA PLANLA'}
-                        </motion.button>
-                    </section>
-                </div>
-
-                <footer className="mt-auto flex flex-col gap-3">
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        whileHover={{ scale: 1.01 }}
-                        onClick={onResetSimulation}
-                        className="rounded-xl border border-rose-400/45 bg-rose-500/15 px-4 py-3 text-xs tracking-[0.2em] text-rose-200"
-                    >
-                        SİMÜLASYONU SIFIRLA
-                    </motion.button>
-
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        whileHover={{ scale: 1.01 }}
-                        onClick={onReturnToMenu}
-                        className="rounded-xl border border-cyan-400/45 bg-cyan-500/15 px-4 py-3 text-xs tracking-[0.2em] text-cyan-100"
-                    >
-                        ANA MENÜYE DÖN
-                    </motion.button>
-                </footer>
-            </motion.aside>
-        </>
-    )
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.01 }}
+            onClick={onReturnToMenu}
+            className="rounded-xl border border-cyan-400/45 bg-cyan-500/15 px-4 py-3 text-xs tracking-[0.2em] text-cyan-100"
+          >
+            ANA MENÜYE DÖN
+          </motion.button>
+        </footer>
+      </motion.aside>
+    </>
+  );
 }
