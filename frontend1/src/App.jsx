@@ -60,18 +60,13 @@ export default function App() {
     const [isStarted, setIsStarted] = useState(false)
     const [isPanelOpen, setIsPanelOpen] = useState(false)
     const [isGridEnabled, setIsGridEnabled] = useState(true)
-
     const [telemetry, setTelemetry] = useState(INITIAL_TELEMETRY)
-
     const [target, setTarget] = useState(INITIAL_TARGET)
-
     const [logs, setLogs] = useState(INITIAL_LOGS)
-    const [selectedMap, setSelectedMap] = useState('crater-a')
+    const [selectedMap, setSelectedMap] = useState('mid-crater')
 
     useEffect(() => {
-        if (!isStarted) {
-            return undefined
-        }
+        if (!isStarted) return undefined
 
         const timer = setInterval(() => {
             setTelemetry((prev) => {
@@ -154,7 +149,7 @@ export default function App() {
                         <Suspense fallback={null}>
                             <Stars />
                             <Lighting />
-                            <MoonSurface isGridEnabled={isGridEnabled} />
+                            <MoonSurface selectedMap={selectedMap} isGridEnabled={isGridEnabled} />
                             <Rover path={ROVER_PATH} isPlaying={isStarted} speed={1} />
                         </Suspense>
                     </Canvas>
@@ -188,7 +183,10 @@ export default function App() {
                                 onSelectMap={setSelectedMap}
                             />
 
-                            <Minimap isGridEnabled={isGridEnabled} isStarted={isStarted} />
+                            <Minimap
+                                isStarted={isStarted}
+                                selectedMap={selectedMap}
+                            />
                         </>
                     )}
                 </AnimatePresence>
