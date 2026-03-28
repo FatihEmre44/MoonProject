@@ -1,120 +1,165 @@
-import React, { useState, useCallback, Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import IntroScreen from './components/ui/IntroScreen'
+import MenuTrigger from './components/ui/MenuTrigger'
+import ControlSidebar from './components/ui/ControlSidebar'
+import ModelMap from './components/scene/ModelMap'
 
-import Lighting from './components/Lighting';
-import MoonSurface from './components/MoonSurface';
-import Rover from './components/Rover';
-import PathLine from './components/PathLine';
-import Stars from './components/Stars';
-import HUD from './components/HUD';
-import MiniMap from './components/MiniMap';
+const INITIAL_TELEMETRY = {
+    speed: 1.85,
+    pitch: -2.4,
+    roll: 1.3,
+    x: 126.5,
+    y: 4.1,
+    z: -342.7,
+}
 
-import { pathToWorld } from './utils/coordinateMapper';
-import { CRATERS, ROVER_PATH, GRID_SIZE } from './utils/sampleData';
+const INITIAL_TARGET = {
+    name: 'Crater A-19',
+    distance: 1480,
+}
 
-/**
- * App — Main orchestrator for the 3D Moon Rover scene (200×200 map).
- */
+const INITIAL_LOGS = [
+    { id: 1, text: 'ROVER OS v1.0 boot complete', level: 'ok' },
+    { id: 2, text: 'Navigation uplink established', level: 'ok' },
+    { id: 3, text: 'Pathfinding...', level: 'ok' },
+]
+
+const missionMessages = [
+    'Pathfinding...',
+    'Lidar scan in progress',
+    'Obstacle detected: micro crater',
+    'Autonomous correction applied',
+    'Signal stable with relay node',
+    'Thermal sensors nominal',
+    'Subsurface scan complete',
+]
+
+function randomRange(min, max) {
+    return Math.random() * (max - min) + min
+}
+
 export default function App() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+    const [isStarted, setIsStarted] = useState(false)
+    const [isPanelOpen, setIsPanelOpen] = useState(false)
+    const [isGridEnabled, setIsGridEnabled] = useState(true)
 
-  // Convert 2D path to 3D world positions (terrain-aware)
-  const worldPath = pathToWorld(ROVER_PATH, {
-    gridWidth: GRID_SIZE,
-    gridHeight: GRID_SIZE,
-    yOffset: 0.15,
-  });
+    const [telemetry, setTelemetry] = useState(INITIAL_TELEMETRY)
 
-  const roverGridPos = ROVER_PATH[currentStep] || [0, 0];
+    const [target, setTarget] = useState(INITIAL_TARGET)
 
-  const handleStart = useCallback(() => {
-    setIsPlaying(true);
-    setIsFinished(false);
-  }, []);
+    const [logs, setLogs] = useState(INITIAL_LOGS)
 
-  const handleReset = useCallback(() => {
-    setIsPlaying(false);
-    setIsFinished(false);
-    setCurrentStep(0);
-  }, []);
+    useEffect(() => {
+        if (!isStarted) {
+            return undefined
+        }
 
-  const handleStep = useCallback((stepIndex) => {
-    setCurrentStep(stepIndex);
-  }, []);
+        const timer = setInterval(() => {
+            setTelemetry((prev) => {
+                const speed = Math.max(0.3, prev.speed + randomRange(-0.35, 0.45))
+                const x = prev.x + speed * 0.72
+                const y = Math.max(0, prev.y + randomRange(-0.22, 0.22))
+                const z = prev.z + randomRange(0.9, 1.95)
 
-  const handleFinish = useCallback(() => {
-    setIsPlaying(false);
-    setIsFinished(true);
-    setCurrentStep(ROVER_PATH.length - 1);
-  }, []);
+                return {
+                    speed,
+                    pitch: randomRange(-14, 14),
+                    roll: randomRange(-10, 10),
+                    x,
+                    y,
+                    z,
+                }
+            })
 
-  return (
-    <>
-      {/* 3D Canvas */}
-      <Canvas
-        shadows
-        camera={{ position: [60, 50, 60], fov: 50, near: 0.1, far: 600 }}
-        gl={{ antialias: true }}
-        onCreated={({ gl }) => {
-          gl.setClearColor('#000000');
-          gl.toneMapping = 1;
-          gl.toneMappingExposure = 1.2;
-        }}
-        style={{ width: '100vw', height: '100vh' }}
-      >
-        <Suspense fallback={null}>
-          <Stars />
+            setTarget((prev) => ({
+                ...prev,
+                distance: Math.max(0, prev.distance - randomRange(3, 9)),
+            }))
 
-          {/* Fog for depth — extended for large map */}
-          <fog attach="fog" args={['#000000', 80, 250]} />
+            setLogs((prev) => {
+                const next = missionMessages[Math.floor(Math.random() * missionMessages.length)]
+                const level = next.toLowerCase().includes('obstacle') ? 'warn' : 'ok'
+                const entry = { id: Date.now(), text: next, level }
+                return [...prev.slice(-7), entry]
+            })
+        }, 950)
 
-          <Lighting />
+        return () => clearInterval(timer)
+    }, [isStarted])
 
-          <MoonSurface gridSize={GRID_SIZE} />
+    const handleRecalculatePath = () => {
+        setLogs((prev) => [
+            ...prev.slice(-7),
+            { id: Date.now(), text: 'Path recalculation requested', level: 'ok' },
+        ])
+        setTarget((prev) => ({ ...prev, distance: prev.distance + randomRange(20, 120) }))
+    }
 
-          <PathLine path={worldPath} currentStep={currentStep} />
+    const handleToggleGrid = () => {
+        setIsGridEnabled((prev) => !prev)
+        setLogs((prev) => [
+            ...prev.slice(-7),
+            {
+                id: Date.now(),
+                text: `Navigation grid ${isGridEnabled ? 'disabled' : 'enabled'}`,
+                level: 'ok',
+            },
+        ])
+    }
 
-          <Rover
-            path={worldPath}
-            isPlaying={isPlaying}
-            speed={4}
-            onStep={handleStep}
-            onFinish={handleFinish}
-          />
+    const handleResetSimulation = () => {
+        setIsStarted(false)
+        setIsPanelOpen(false)
+        setIsGridEnabled(true)
+        setTelemetry(INITIAL_TELEMETRY)
+        setTarget(INITIAL_TARGET)
+        setLogs(INITIAL_LOGS)
+    }
 
-          <OrbitControls
-            enablePan
-            enableZoom
-            enableRotate
-            maxPolarAngle={Math.PI / 2.1}
-            minDistance={3}
-            maxDistance={200}
-            target={[0, 0, 0]}
-          />
-        </Suspense>
-      </Canvas>
+    return (
+        <main className="relative h-screen w-screen overflow-hidden bg-obsidian text-cyan-50">
+            <div className="absolute inset-0 lunar-background" aria-hidden="true" />
 
-      {/* HUD overlay */}
-      <HUD
-        roverPosition={{ col: roverGridPos[0], row: roverGridPos[1] }}
-        currentStep={currentStep}
-        totalSteps={ROVER_PATH.length - 1}
-        isPlaying={isPlaying}
-        isFinished={isFinished}
-        onStart={handleStart}
-        onReset={handleReset}
-      />
+            <section className="absolute inset-0 flex items-center justify-center p-6">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.8 }}
+                    className="mission-stage h-full w-full"
+                >
+                    <ModelMap isGridEnabled={isGridEnabled} />
+                </motion.div>
+            </section>
 
-      {/* Mini-map overlay */}
-      <MiniMap
-        gridSize={GRID_SIZE}
-        craters={CRATERS}
-        roverPath={ROVER_PATH}
-        currentStep={currentStep}
-      />
-    </>
-  );
+            <div className="pointer-events-none absolute inset-0 z-50">
+                <AnimatePresence mode="wait">
+                    {!isStarted && <IntroScreen key="intro" onStart={() => setIsStarted(true)} />}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {isStarted && (
+                        <>
+                            <MenuTrigger
+                                isPanelOpen={isPanelOpen}
+                                onClick={() => setIsPanelOpen((prev) => !prev)}
+                            />
+
+                            <ControlSidebar
+                                isOpen={isPanelOpen}
+                                telemetry={telemetry}
+                                logs={logs}
+                                target={target}
+                                isGridEnabled={isGridEnabled}
+                                onRecalculatePath={handleRecalculatePath}
+                                onToggleGrid={handleToggleGrid}
+                                onResetSimulation={handleResetSimulation}
+                                onClose={() => setIsPanelOpen(false)}
+                            />
+                        </>
+                    )}
+                </AnimatePresence>
+            </div>
+        </main>
+    )
 }
