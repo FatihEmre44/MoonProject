@@ -8,10 +8,10 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 // OpenAI API Anahtarı ve Bağlantı Kontrolü
 const apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {
-  console.warn("⚠️  UYARI: OPENAI_API_KEY .env dosyasında bulunamadı veya okunamadı!");
+    console.warn("⚠️  UYARI: OPENAI_API_KEY .env dosyasında bulunamadı veya okunamadı!");
 } else {
-  console.log(`✅ OPENAI_API_KEY başarıyla yüklendi (Karakter sayısı: ${apiKey.length})`);
-  console.log("🚀 OpenAI Karar Destek Sistemi aktif.");
+    console.log(`✅ OPENAI_API_KEY başarıyla yüklendi (Karakter sayısı: ${apiKey.length})`);
+    console.log("🚀 OpenAI Karar Destek Sistemi aktif.");
 }
 
 const openai = new OpenAI({
@@ -33,15 +33,15 @@ export async function generateMissionReport(telemetryData) {
       messages: [
         {
           role: "system",
-          content: "Sen Türkiye Uzay Ajansı (TUA) Ay Araştırma Programı'nda (AYAP) görevli kıdemli navigasyon mühendisinin analiz asistanısın. Görevin, seçilen rotanın neden tercih edildiğini SOMUT verilerle açıklamak. Cevap Türkçe olsun, 2-3 kısa cümle olsun, markdown kullanma. Genel cümle kurma. Mutlaka sayısal veri kullan: adım sayısı, maliyet, risk oranı, yokuş/çapraz adım veya tehlike oranı."
+          content: "Sen Türkiye Uzay Ajansı (TUA) Ay Araştırma Programı'nda (AYAP) görevli bir Kıdemli Navigasyon Mühendisisin. Görevin, otonom Rover'ın belirlediği rotayı teknik ve stratejik olarak onaylamaktır. Maksimum 2 cümlelik, profesyonel teknik analiz raporu üret. Markdown kullanma."
         },
         {
           role: "user",
-          content: `Aşağıdaki telemetri ve rota özetini kullanarak "neden bu rota seçildi" sorusunu cevapla. Özellikle şu üç başlığı kapsa: 1) Seçim gerekçesi, 2) Kaçınılan riskler, 3) Alternatiflerin neden daha zayıf olduğu. Veri: ${JSON.stringify(telemetryData)}`
+          content: `Aşağıdaki telemetri verilerini analiz et ve rotanın neden güvenli/optimum olduğunu açıkla: ${JSON.stringify(telemetryData)}`
         }
       ],
-      max_tokens: 260,
-      temperature: 0.35
+      max_tokens: 150,
+      temperature: 0.7
     });
 
     return completion.choices[0].message.content.trim();
