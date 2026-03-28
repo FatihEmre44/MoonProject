@@ -26,10 +26,8 @@ export default function ControlSidebar({
     isOpen,
     telemetry,
     target,
-    isGridEnabled,
-    onRecalculatePath,
-    onToggleGrid,
     onResetSimulation,
+    onReturnToMenu,
     onClose,
     selectedMap,
     onSelectMap,
@@ -52,7 +50,7 @@ export default function ControlSidebar({
                 initial={{ x: '-100%' }}
                 animate={{ x: isOpen ? 0 : '-100%' }}
                 transition={{ type: 'spring', stiffness: 160, damping: 23 }}
-                className="panel-glass pointer-events-auto absolute left-0 top-0 h-full w-full max-w-md rounded-r-3xl p-6"
+                className="panel-glass pointer-events-auto absolute left-0 top-0 flex h-full w-full max-w-md flex-col rounded-r-3xl p-6"
             >
                 <button
                     type="button"
@@ -71,74 +69,75 @@ export default function ControlSidebar({
                     <p className="text-[11px] text-cyan-200/70">LUNAR LINK ONLINE</p>
                 </header>
 
-                <section className="mb-5">
-                    <h3 className="mb-2 text-xs tracking-[0.3em] text-cyan-200/70">TELEMETRY</h3>
-                    <div className="rounded-xl border border-cyan-300/10 bg-black/0 px-3">
-                        <TelemetryRow label="Anlık Hız" value={`${telemetry.speed.toFixed(2)} m/s`} />
-                        <TelemetryRow label="Pitch" value={`${telemetry.pitch.toFixed(1)} deg`} />
-                        <TelemetryRow label="Roll" value={`${telemetry.roll.toFixed(1)} deg`} />
-                        <TelemetryRow label="X" value={telemetry.x.toFixed(2)} />
-                        <TelemetryRow label="Y" value={telemetry.y.toFixed(2)} />
-                        <TelemetryRow label="Z" value={telemetry.z.toFixed(2)} />
-                        <TelemetryRow label="Sıcaklık" value={`${telemetry.temperature.toFixed(1)} °C`} />
-                    </div>
-                </section>
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                    <section className="mb-5">
+                        <h3 className="mb-2 text-xs tracking-[0.3em] text-cyan-200/70">TELEMETRY</h3>
+                        <div className="rounded-xl border border-cyan-300/10 bg-black/0 px-3">
+                            <TelemetryRow label="Anlık Hız" value={`${telemetry.speed.toFixed(2)} m/s`} />
+                            <TelemetryRow label="Pitch" value={`${telemetry.pitch.toFixed(1)} deg`} />
+                            <TelemetryRow label="Roll" value={`${telemetry.roll.toFixed(1)} deg`} />
+                            <TelemetryRow label="Sıcaklık" value={`${telemetry.temperature.toFixed(1)} °C`} />
+                            <TelemetryRow label="X" value={telemetry.x.toFixed(2)} />
+                            <TelemetryRow label="Y" value={telemetry.y.toFixed(2)} />
+                            <TelemetryRow label="Z" value={telemetry.z.toFixed(2)} />
+                        </div>
+                    </section>
 
-                <section className="mb-5 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
-                    <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">TARGET INFO</h3>
-                    <div className="flex items-center justify-between text-xs">
-                        <span className="text-cyan-200/75">Target Node</span>
-                        <span className="text-cyan-100">{target.name}</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-cyan-200/75">Kalan Mesafe</span>
-                        <span className="text-cyan-100">{target.distance.toFixed(0)} m</span>
-                    </div>
-                </section>
+                    <section className="mb-5 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
+                        <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">TARGET INFO</h3>
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-cyan-200/75">Target Node</span>
+                            <span className="text-cyan-100">{target.name}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs">
+                            <span className="text-cyan-200/75">Kalan Mesafe</span>
+                            <span className="text-cyan-100">{target.distance.toFixed(0)} m</span>
+                        </div>
+                    </section>
 
-                <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
-                    <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">HARİTA SEÇİMİ</h3>
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setIsMapMenuOpen(!isMapMenuOpen)}
-                        className="w-full rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition-all hover:bg-cyan-500/15"
-                    >
-                        {CRATER_ICONS[selectedMap] || '◎'}{' '}
-                        {maps.find((m) => m.id === selectedMap)?.label || 'Map'} ▼
-                    </motion.button>
-                    <AnimatePresence>
-                        {isMapMenuOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                className="mt-2 space-y-2"
-                            >
-                                {maps.map((map) => (
-                                    <motion.button
-                                        key={map.id}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => {
-                                            onSelectMap(map.id)
-                                            setIsMapMenuOpen(false)
-                                        }}
-                                        className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${
-                                            selectedMap === map.id
+                    <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
+                        <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">HARİTA SEÇİMİ</h3>
+                        <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setIsMapMenuOpen(!isMapMenuOpen)}
+                            className="w-full rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition-all hover:bg-cyan-500/15"
+                        >
+                            {CRATER_ICONS[selectedMap] || '◎'}{' '}
+                            {maps.find((m) => m.id === selectedMap)?.label || 'Map'} ▼
+                        </motion.button>
+                        <AnimatePresence>
+                            {isMapMenuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -8 }}
+                                    className="mt-2 space-y-2"
+                                >
+                                    {maps.map((map) => (
+                                        <motion.button
+                                            key={map.id}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={() => {
+                                                onSelectMap(map.id)
+                                                setIsMapMenuOpen(false)
+                                            }}
+                                            className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${selectedMap === map.id
                                                 ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
                                                 : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-2 text-xs font-medium">
-                                            <span>{CRATER_ICONS[map.id]}</span>
-                                            {map.label}
-                                        </div>
-                                        <p className="mt-0.5 text-[10px] text-cyan-200/50">{map.description}</p>
-                                    </motion.button>
-                                ))}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </section>
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 text-xs font-medium">
+                                                <span>{CRATER_ICONS[map.id]}</span>
+                                                {map.label}
+                                            </div>
+                                            <p className="mt-0.5 text-[10px] text-cyan-200/50">{map.description}</p>
+                                        </motion.button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </section>
+                </div>
 
                 <footer className="mt-auto flex flex-col gap-3">
                     <motion.button
@@ -153,19 +152,10 @@ export default function ControlSidebar({
                     <motion.button
                         whileTap={{ scale: 0.98 }}
                         whileHover={{ scale: 1.01 }}
-                        onClick={onRecalculatePath}
-                        className="rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-3 text-xs tracking-[0.2em] text-amber-200"
-                    >
-                        ROTA YENİDEN HESAPLA
-                    </motion.button>
-
-                    <motion.button
-                        whileTap={{ scale: 0.98 }}
-                        whileHover={{ scale: 1.01 }}
-                        onClick={onToggleGrid}
+                        onClick={onReturnToMenu}
                         className="rounded-xl border border-cyan-400/45 bg-cyan-500/15 px-4 py-3 text-xs tracking-[0.2em] text-cyan-100"
                     >
-                        GRID {isGridEnabled ? 'AÇIK' : 'KAPALI'}
+                        ANA MENÜYE DÖN
                     </motion.button>
                 </footer>
             </motion.aside>
