@@ -11,6 +11,12 @@
 
 import { GRID_SIZE, CRATERS, WAYPOINTS } from './sampleData.js';
 import { getMapProfile } from './terrainUtils.js';
+import {
+    TERRAIN_PLANE_SIZE,
+    BOULDER_SPREAD_FACTOR,
+    LARGE_BOULDER_BLOCK_SCALE,
+    buildLargeBoulderObstacles,
+} from './obstacleField.js';
 
 /**
  * Grid koordinatlarının sınır içinde olup olmadığını kontrol et.
@@ -30,6 +36,24 @@ function worldToGridCoord(worldX, worldZ, gridSize = GRID_SIZE) {
     return [row, col];
 }
 
+function paintCircleOnGrid(grid, centerRow, centerCol, radius, value) {
+    const minRow = Math.max(0, Math.floor(centerRow - radius));
+    const maxRow = Math.min(GRID_SIZE - 1, Math.ceil(centerRow + radius));
+    const minCol = Math.max(0, Math.floor(centerCol - radius));
+    const maxCol = Math.min(GRID_SIZE - 1, Math.ceil(centerCol + radius));
+
+    for (let row = minRow; row <= maxRow; row++) {
+        for (let col = minCol; col <= maxCol; col++) {
+            const dr = row - centerRow;
+            const dc = col - centerCol;
+            const dist = Math.sqrt(dr * dr + dc * dc);
+            if (dist <= radius && (value === 1 || grid[row][col] !== 1)) {
+                grid[row][col] = value;
+            }
+        }
+    }
+}
+
 /**
  * 2D mapGrid oluştur: 200×200 array
  *   0 = Güvenli yol (default)
@@ -40,7 +64,7 @@ function worldToGridCoord(worldX, worldZ, gridSize = GRID_SIZE) {
  * @param {Array} crateres - CRATERS array: [{ col, row, radius }, ...]
  * @returns {number[][]} 200×200 mapGrid
  */
-function buildMapGrid(craters) {
+function buildMapGrid(craters, largeBoulders = []) {
     const grid = Array.from({ length: GRID_SIZE }, () =>
         Array.from({ length: GRID_SIZE }, () => 0)
     );
@@ -51,21 +75,14 @@ function buildMapGrid(craters) {
         // radius'ün 1.5 katı içini engel olarak tut (daha güvenli)
         const obstacleRadius = radius * 1.2;
 
-        for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-                const dist = Math.sqrt(Math.pow(r - row, 2) + Math.pow(c - col, 2));
+        paintCircleOnGrid(grid, row, col, obstacleRadius, 1);
+        paintCircleOnGrid(grid, row, col, radius * 2.5, 2);
+    });
 
-                // Krater merkezine çok yakın: engel (1)
-                if (dist <= obstacleRadius) {
-                    grid[r][c] = 1;
-                }
-                // Krater kenarındaki eğim (slope): 2
-                // Not: Bir hucre bir kez engel (1) olduysa daha sonra 2 ile ezilmemeli.
-                else if (dist <= radius * 2.5 && grid[r][c] !== 1) {
-                    grid[r][c] = 2;
-                }
-            }
-        }
+    // Sadece buyuk boulder'lar engel: kucuk taslardan gecise izin ver.
+    largeBoulders.forEach(({ x, z, radius }) => {
+        const [row, col] = worldToGridCoord(x, z);
+        paintCircleOnGrid(grid, row, col, radius, 1);
     });
 
     return grid;
@@ -129,7 +146,14 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
         return { col, row, radius: r };
     });
 
-    const mapGrid = buildMapGrid(craters2D);
+    const largeBoulders = buildLargeBoulderObstacles({
+        mapId,
+        boulderCount: profile.boulderCount || 0,
+        spread: TERRAIN_PLANE_SIZE * BOULDER_SPREAD_FACTOR,
+        minBlockingScale: LARGE_BOULDER_BLOCK_SCALE,
+    });
+
+    const mapGrid = buildMapGrid(craters2D, largeBoulders);
     const craterMap = buildCraterMap(craters2D);
 
     // Waypoints'i kullan (sampleData.js'den geliyor)
@@ -142,6 +166,7 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
         metadata: {
             gridSize: GRID_SIZE,
             craterCount: craters2D.length,
+            largeBoulderCount: largeBoulders.length,
             mapProfile: mapId,
         },
     };

@@ -1,6 +1,13 @@
 import React, { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
-import { getTerrainHeight, getMapProfile, seededRandom } from '../utils/terrainUtils'
+import { getTerrainHeight, getMapProfile } from '../utils/terrainUtils'
+import {
+  TERRAIN_PLANE_SIZE,
+  ROCK_SPREAD_FACTOR,
+  BOULDER_SPREAD_FACTOR,
+  generateRockInstances,
+  generateBoulderInstances,
+} from '../utils/obstacleField'
 
 /**
  * Moon surface — procedural terrain driven by selectedMap profile.
@@ -10,7 +17,7 @@ export default function MoonSurface({
   isGridEnabled = true,
   onSelectTarget,
 }) {
-  const planeSize = 210
+  const planeSize = TERRAIN_PLANE_SIZE
   const segments = 400
 
   const profile = getMapProfile(selectedMap)
@@ -62,8 +69,8 @@ export default function MoonSurface({
 
       {isGridEnabled && <SparseGrid size={planeSize} spacing={15} />}
 
-      <Rocks count={profile.rockCount} spread={planeSize * 0.88} mapId={selectedMap} />
-      <Boulders count={profile.boulderCount} spread={planeSize * 0.82} mapId={selectedMap} />
+      <Rocks count={profile.rockCount} spread={planeSize * ROCK_SPREAD_FACTOR} mapId={selectedMap} />
+      <Boulders count={profile.boulderCount} spread={planeSize * BOULDER_SPREAD_FACTOR} mapId={selectedMap} />
     </group>
   )
 }
@@ -96,29 +103,33 @@ function SparseGrid({ size, spacing = 15 }) {
 
 function Rocks({ count = 2000, spread = 180, mapId = 'crater-a' }) {
   const meshRef = useRef()
+  const instances = useMemo(
+    () => generateRockInstances({ mapId, count, spread }),
+    [count, spread, mapId],
+  )
 
   useEffect(() => {
     if (!meshRef.current) return
-    const rng = seededRandom(42)
+    const mesh = meshRef.current
     const dummy = new THREE.Object3D()
 
-    for (let i = 0; i < count; i++) {
-      const x = (rng() - 0.5) * spread
-      const z = (rng() - 0.5) * spread
-      const y = getTerrainHeight(x, z, mapId)
-      const sc = 0.06 + rng() * 0.28
+    for (let i = 0; i < instances.length; i++) {
+      const item = instances[i]
+      const y = getTerrainHeight(item.x, item.z, mapId)
 
-      dummy.position.set(x, y + sc * 0.3, z)
-      dummy.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI)
-      dummy.scale.set(sc, sc * (0.3 + rng() * 0.7), sc)
+      dummy.position.set(item.x, y + item.scaleX * 0.3, item.z)
+      dummy.rotation.set(item.rotX, item.rotY, item.rotZ)
+      dummy.scale.set(item.scaleX, item.scaleY, item.scaleZ)
       dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
+      mesh.setMatrixAt(i, dummy.matrix)
     }
-    meshRef.current.instanceMatrix.needsUpdate = true
-  }, [count, spread, mapId])
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingBox()
+    mesh.computeBoundingSphere()
+  }, [instances, mapId])
 
   return (
-    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow raycast={() => null}>
+    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow raycast={() => null} frustumCulled={false}>
       <dodecahedronGeometry args={[1, 0]} />
       <meshStandardMaterial color="#4a4a4a" roughness={0.95} metalness={0.05} />
     </instancedMesh>
@@ -127,29 +138,33 @@ function Rocks({ count = 2000, spread = 180, mapId = 'crater-a' }) {
 
 function Boulders({ count = 150, spread = 170, mapId = 'crater-a' }) {
   const meshRef = useRef()
+  const instances = useMemo(
+    () => generateBoulderInstances({ mapId, count, spread }),
+    [count, spread, mapId],
+  )
 
   useEffect(() => {
     if (!meshRef.current) return
-    const rng = seededRandom(777)
+    const mesh = meshRef.current
     const dummy = new THREE.Object3D()
 
-    for (let i = 0; i < count; i++) {
-      const x = (rng() - 0.5) * spread
-      const z = (rng() - 0.5) * spread
-      const y = getTerrainHeight(x, z, mapId)
-      const sc = 0.4 + rng() * 1.0
+    for (let i = 0; i < instances.length; i++) {
+      const item = instances[i]
+      const y = getTerrainHeight(item.x, item.z, mapId)
 
-      dummy.position.set(x, y + sc * 0.2, z)
-      dummy.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * 0.5)
-      dummy.scale.set(sc, sc * (0.3 + rng() * 0.5), sc * (0.6 + rng() * 0.4))
+      dummy.position.set(item.x, y + item.scaleX * 0.2, item.z)
+      dummy.rotation.set(item.rotX, item.rotY, item.rotZ)
+      dummy.scale.set(item.scaleX, item.scaleY, item.scaleZ)
       dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
+      mesh.setMatrixAt(i, dummy.matrix)
     }
-    meshRef.current.instanceMatrix.needsUpdate = true
-  }, [count, spread, mapId])
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingBox()
+    mesh.computeBoundingSphere()
+  }, [instances, mapId])
 
   return (
-    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow raycast={() => null}>
+    <instancedMesh ref={meshRef} args={[null, null, count]} castShadow receiveShadow raycast={() => null} frustumCulled={false}>
       <icosahedronGeometry args={[1, 0]} />
       <meshStandardMaterial color="#3d3d3d" roughness={1} metalness={0.08} />
     </instancedMesh>
