@@ -5,9 +5,15 @@ import { getTerrainHeight, getMapProfile } from '../../utils/terrainUtils'
 const MAP_SIZE = 160
 const WORLD_SPAN = 200
 
-export default function Minimap({ isStarted, selectedMap = 'mid-crater' }) {
+export default function Minimap({
+    isStarted,
+    selectedMap = 'mid-crater',
+    isGridEnabled = true,
+    isRoverFocused = false,
+    onToggleGrid,
+    onToggleRoverFocus,
+}) {
     const canvasRef = useRef(null)
-    const bgRef = useRef(null)
 
     // Render terrain heightmap when map changes
     useEffect(() => {
@@ -37,8 +43,23 @@ export default function Minimap({ isStarted, selectedMap = 'mid-crater' }) {
             }
         }
 
-        bgRef.current = img
         ctx.putImageData(img, 0, 0)
+
+        if (isGridEnabled) {
+            ctx.strokeStyle = 'rgba(0, 242, 255, 0.12)'
+            ctx.lineWidth = 0.7
+            for (let i = 0; i <= MAP_SIZE; i += 16) {
+                ctx.beginPath()
+                ctx.moveTo(i + 0.5, 0)
+                ctx.lineTo(i + 0.5, MAP_SIZE)
+                ctx.stroke()
+
+                ctx.beginPath()
+                ctx.moveTo(0, i + 0.5)
+                ctx.lineTo(MAP_SIZE, i + 0.5)
+                ctx.stroke()
+            }
+        }
 
         // Draw craters as subtle circles
         ctx.strokeStyle = 'rgba(0, 242, 255, 0.15)'
@@ -81,14 +102,14 @@ export default function Minimap({ isStarted, selectedMap = 'mid-crater' }) {
         const last = pathPoints[pathPoints.length - 1]
         ctx.arc(last[0] * MAP_SIZE, last[1] * MAP_SIZE, 3, 0, Math.PI * 2)
         ctx.fill()
-    }, [selectedMap])
+    }, [selectedMap, isGridEnabled])
 
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={isStarted ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.6 }}
-            className="pointer-events-none fixed right-5 top-5 z-40 overflow-hidden rounded-xl border border-cyan-300/25 bg-black/40 backdrop-blur-md"
+            className="pointer-events-auto fixed right-5 top-5 z-40 overflow-hidden rounded-xl border border-cyan-300/20 bg-black/25 backdrop-blur-md"
             style={{ width: MAP_SIZE + 16, padding: 8 }}
         >
             {/* Header */}
@@ -113,13 +134,7 @@ export default function Minimap({ isStarted, selectedMap = 'mid-crater' }) {
                 }}
             />
 
-            {/* Animated rover dot */}
-            <motion.div
-                animate={{
-                    x: [MAP_SIZE * 0.15, MAP_SIZE * 0.42, MAP_SIZE * 0.65, MAP_SIZE * 0.85],
-                    y: [MAP_SIZE * 0.85, MAP_SIZE * 0.52, MAP_SIZE * 0.35, MAP_SIZE * 0.18],
-                }}
-                transition={{ duration: 12, ease: 'linear', repeat: Infinity }}
+            <div
                 className="pointer-events-none absolute"
                 style={{
                     width: 6,
@@ -127,10 +142,27 @@ export default function Minimap({ isStarted, selectedMap = 'mid-crater' }) {
                     borderRadius: '50%',
                     background: '#00f2ff',
                     boxShadow: '0 0 8px rgba(0,242,255,0.9), 0 0 16px rgba(0,242,255,0.4)',
-                    left: 8,
-                    top: 22,
+                    left: 8 + MAP_SIZE * 0.15,
+                    top: 22 + MAP_SIZE * 0.85,
                 }}
             />
+
+            <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                    type="button"
+                    onClick={onToggleGrid}
+                    className="rounded-md border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[9px] tracking-[0.18em] text-cyan-100 transition-colors hover:bg-cyan-500/20"
+                >
+                    GRID {isGridEnabled ? 'AÇIK' : 'KAPALI'}
+                </button>
+                <button
+                    type="button"
+                    onClick={onToggleRoverFocus}
+                    className="rounded-md border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[9px] tracking-[0.18em] text-cyan-100 transition-colors hover:bg-cyan-500/20"
+                >
+                    {isRoverFocused ? 'HARİTAYI GÖSTER' : 'ROVERA YAKLAŞ'}
+                </button>
+            </div>
         </motion.div>
     )
 }

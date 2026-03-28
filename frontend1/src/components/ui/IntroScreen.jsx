@@ -6,7 +6,7 @@ export default function IntroScreen({ onStart }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.35 } }}
-            className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/35 p-6"
+            className="pointer-events-auto absolute inset-0 flex items-center justify-center bg-black/22 p-6"
         >
             <motion.div
                 initial={{ y: 20, opacity: 0 }}
@@ -23,7 +23,7 @@ export default function IntroScreen({ onStart }) {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={onStart}
-                    className="mx-auto rounded-xl border border-cyan-300/40 bg-black/20 px-8 py-4 text-sm font-semibold tracking-[0.3em] text-cyan-100 transition-colors hover:border-cyan-300 hover:bg-cyan-950/18"
+                    className="mx-auto rounded-xl border border-cyan-300/40 bg-black/10 px-8 py-4 text-sm font-semibold tracking-[0.3em] text-cyan-100 transition-colors hover:border-cyan-300 hover:bg-cyan-950/16"
                 >
                     START SIMULATION
                 </motion.button>
