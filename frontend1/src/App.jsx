@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import IntroScreen from './components/ui/IntroScreen'
 import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
+import Minimap from './components/ui/Minimap'
 import MoonSurface from './components/MoonSurface'
 import Lighting from './components/Lighting'
 import Stars from './components/Stars'
@@ -181,6 +182,8 @@ export default function App() {
                                 onResetSimulation={handleResetSimulation}
                                 onClose={() => setIsPanelOpen(false)}
                             />
+
+                            <Minimap isGridEnabled={isGridEnabled} isStarted={isStarted} />
                         </>
                     )}
                 </AnimatePresence>
