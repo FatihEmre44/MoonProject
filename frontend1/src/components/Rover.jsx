@@ -14,6 +14,7 @@ export default function Rover({
   onPositionChange,
   onObstacleHit,
   onRouteComplete,
+  onStepChange,
   resetSignal = 0,
 }) {
   const roverRef = useRef();
@@ -32,6 +33,7 @@ export default function Rover({
     impact: 0,
     impactSide: 1,
     passedObstacleIndexes: new Set(),
+    prevIndex: -1,
   });
 
   const FORWARD_SPEED = 4.3;
@@ -66,6 +68,7 @@ export default function Rover({
       impact: 0,
       impactSide: 1,
       passedObstacleIndexes: new Set(),
+      prevIndex: -1,
     };
     emitAccumulatorRef.current = 0;
   }, [initialPosition, mapId, resetSignal, rotationY, routePoints]);
@@ -114,12 +117,9 @@ export default function Rover({
 
         if (dist > 0.0001) {
           const targetHeading = Math.atan2(dx, dz);
-          // Shortest path angle math
           let diff = targetHeading - motion.headingY;
           while (diff < -Math.PI) diff += Math.PI * 2;
           while (diff > Math.PI) diff -= Math.PI * 2;
-          
-          // Apply smooth interpolation (delta-time based)
           motion.headingY += diff * Math.min(1.0, delta * 5.0);
         }
 
@@ -139,6 +139,12 @@ export default function Rover({
           const step = Math.min(ROUTE_SPEED * delta, dist);
           motion.x += (dx / dist) * step;
           motion.z += (dz / dist) * step;
+        }
+
+        // Report index changes back to parent
+        if (motion.routeIndex !== motion.prevIndex) {
+            motion.prevIndex = motion.routeIndex;
+            onStepChange?.(motion.routeIndex);
         }
       } else {
         motion.z -= FORWARD_SPEED * delta;
