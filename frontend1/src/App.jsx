@@ -232,7 +232,11 @@ export default function App() {
 
   const roverStartPosition = useMemo(() => {
     const override = customRoverAnchors[selectedMap];
-    const [x, z] = override ?? (ROVER_ANCHORS[selectedMap] ? [ROVER_ANCHORS[selectedMap][0], ROVER_ANCHORS[selectedMap][2]] : [0, 78]);
+    const [x, z] =
+      override ??
+      (ROVER_ANCHORS[selectedMap]
+        ? [ROVER_ANCHORS[selectedMap][0], ROVER_ANCHORS[selectedMap][2]]
+        : [0, 78]);
     return [x, getTerrainHeight(x, z, selectedMap) + 0.48, z];
   }, [customRoverAnchors, selectedMap]);
 
@@ -623,10 +627,11 @@ export default function App() {
                         key={map.id}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setSelectedMap(map.id)}
-                        className={`w-full rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${selectedMap === map.id
-                          ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100"
-                          : "border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10"
-                          }`}
+                        className={`w-full rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${
+                          selectedMap === map.id
+                            ? "border-cyan-300/60 bg-cyan-500/20 text-cyan-100"
+                            : "border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10"
+                        }`}
                       >
                         {map.icon} {map.label}
                       </motion.button>
