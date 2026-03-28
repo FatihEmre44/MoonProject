@@ -43,10 +43,9 @@ const missionMessages = [
 ]
 
 const ROVER_ANCHORS = {
-    'crater-a': [0, 0, 78],
-    vallis: [0, 0, 78],
-    olympus: [0, 0, 78],
-    polar: [0, 0, 78],
+    'low-crater': [0, 0, 78],
+    'mid-crater': [0, 0, 78],
+    'high-crater': [0, 0, 78],
 }
 
 function randomRange(min, max) {
@@ -57,23 +56,18 @@ export default function App() {
     const [isStarted, setIsStarted] = useState(false)
     const [isPanelOpen, setIsPanelOpen] = useState(false)
     const [isGridEnabled, setIsGridEnabled] = useState(true)
-
     const [telemetry, setTelemetry] = useState(INITIAL_TELEMETRY)
-
     const [target, setTarget] = useState(INITIAL_TARGET)
-
     const [logs, setLogs] = useState(INITIAL_LOGS)
-    const [selectedMap, setSelectedMap] = useState('crater-a')
+    const [selectedMap, setSelectedMap] = useState('mid-crater')
 
     const roverPosition = useMemo(() => {
         const [x, , z] = ROVER_ANCHORS[selectedMap] ?? [0, 0, 78]
-        return [x, getTerrainHeight(x, z) + 0.48, z]
+        return [x, getTerrainHeight(x, z, selectedMap) + 0.48, z]
     }, [selectedMap])
 
     useEffect(() => {
-        if (!isStarted) {
-            return undefined
-        }
+        if (!isStarted) return undefined
 
         const timer = setInterval(() => {
             setTelemetry((prev) => {
@@ -156,7 +150,7 @@ export default function App() {
                         <Suspense fallback={null}>
                             <Stars />
                             <Lighting />
-                            <MoonSurface isGridEnabled={isGridEnabled} />
+                            <MoonSurface selectedMap={selectedMap} isGridEnabled={isGridEnabled} />
                             <Rover position={roverPosition} rotationY={Math.PI} />
                         </Suspense>
                     </Canvas>
@@ -190,7 +184,10 @@ export default function App() {
                                 onSelectMap={setSelectedMap}
                             />
 
-                            <Minimap isGridEnabled={isGridEnabled} isStarted={isStarted} />
+                            <Minimap
+                                isStarted={isStarted}
+                                selectedMap={selectedMap}
+                            />
                         </>
                     )}
                 </AnimatePresence>

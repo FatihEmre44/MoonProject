@@ -1,11 +1,9 @@
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { getAllMaps } from '../../utils/terrainUtils'
 
 function lineClass(level) {
-    if (level === 'warn') {
-        return 'text-rose-400'
-    }
+    if (level === 'warn') return 'text-rose-400'
     return 'text-cyan-100/90'
 }
 
@@ -16,6 +14,12 @@ function TelemetryRow({ label, value }) {
             <span className="text-cyan-100">{value}</span>
         </div>
     )
+}
+
+const CRATER_ICONS = {
+    'low-crater': '○',
+    'mid-crater': '◎',
+    'high-crater': '◉',
 }
 
 export default function ControlSidebar({
@@ -31,12 +35,8 @@ export default function ControlSidebar({
     onSelectMap,
 }) {
     const [isMapMenuOpen, setIsMapMenuOpen] = useState(false)
-    const maps = [
-        { id: 'crater-a', label: 'Crater A-19' },
-        { id: 'vallis', label: 'Vallis Marineris' },
-        { id: 'olympus', label: 'Olympus Mons' },
-        { id: 'polar', label: 'Polar Region' },
-    ]
+    const maps = getAllMaps()
+
     return (
         <>
             {isOpen && (
@@ -74,36 +74,37 @@ export default function ControlSidebar({
                 <section className="mb-5">
                     <h3 className="mb-2 text-xs tracking-[0.3em] text-cyan-200/70">TELEMETRY</h3>
                     <div className="rounded-xl border border-cyan-300/10 bg-black/0 px-3">
-                        <TelemetryRow label="Anlik Hiz" value={`${telemetry.speed.toFixed(2)} m/s`} />
+                        <TelemetryRow label="Anlık Hız" value={`${telemetry.speed.toFixed(2)} m/s`} />
                         <TelemetryRow label="Pitch" value={`${telemetry.pitch.toFixed(1)} deg`} />
                         <TelemetryRow label="Roll" value={`${telemetry.roll.toFixed(1)} deg`} />
                         <TelemetryRow label="X" value={telemetry.x.toFixed(2)} />
                         <TelemetryRow label="Y" value={telemetry.y.toFixed(2)} />
                         <TelemetryRow label="Z" value={telemetry.z.toFixed(2)} />
-                        <TelemetryRow label="Sicaklik" value={`${telemetry.temperature.toFixed(1)} °C`} />
+                        <TelemetryRow label="Sıcaklık" value={`${telemetry.temperature.toFixed(1)} °C`} />
                     </div>
                 </section>
 
-                <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
+                <section className="mb-5 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
                     <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">TARGET INFO</h3>
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-cyan-200/75">Target Node</span>
                         <span className="text-cyan-100">{target.name}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-cyan-200/75">Remaining Distance</span>
-                        <span className="text-cyan-100">{target.distance.toFixed(0)} meters</span>
+                        <span className="text-cyan-200/75">Kalan Mesafe</span>
+                        <span className="text-cyan-100">{target.distance.toFixed(0)} m</span>
                     </div>
                 </section>
 
                 <section className="mb-6 rounded-xl border border-cyan-300/10 bg-black/0 p-3">
-                    <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">MAP SELECTION</h3>
+                    <h3 className="mb-3 text-xs tracking-[0.3em] text-cyan-200/70">HARİTA SEÇİMİ</h3>
                     <motion.button
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setIsMapMenuOpen(!isMapMenuOpen)}
                         className="w-full rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 transition-all hover:bg-cyan-500/15"
                     >
-                        {maps.find((m) => m.id === selectedMap)?.label} ▼
+                        {CRATER_ICONS[selectedMap] || '◎'}{' '}
+                        {maps.find((m) => m.id === selectedMap)?.label || 'Map'} ▼
                     </motion.button>
                     <AnimatePresence>
                         {isMapMenuOpen && (
@@ -121,12 +122,17 @@ export default function ControlSidebar({
                                             onSelectMap(map.id)
                                             setIsMapMenuOpen(false)
                                         }}
-                                        className={`w-full rounded-lg border px-3 py-2 text-xs transition-all ${selectedMap === map.id
+                                        className={`w-full rounded-lg border px-3 py-2.5 text-left transition-all ${
+                                            selectedMap === map.id
                                                 ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
                                                 : 'border-cyan-300/20 bg-black/20 text-cyan-200/70 hover:bg-cyan-500/10'
-                                            }`}
+                                        }`}
                                     >
-                                        ✓ {map.label}
+                                        <div className="flex items-center gap-2 text-xs font-medium">
+                                            <span>{CRATER_ICONS[map.id]}</span>
+                                            {map.label}
+                                        </div>
+                                        <p className="mt-0.5 text-[10px] text-cyan-200/50">{map.description}</p>
                                     </motion.button>
                                 ))}
                             </motion.div>
@@ -141,7 +147,7 @@ export default function ControlSidebar({
                         onClick={onResetSimulation}
                         className="rounded-xl border border-rose-400/45 bg-rose-500/15 px-4 py-3 text-xs tracking-[0.2em] text-rose-200"
                     >
-                        SIMULASYONU SIFIRLA
+                        SİMÜLASYONU SIFIRLA
                     </motion.button>
 
                     <motion.button
@@ -150,7 +156,7 @@ export default function ControlSidebar({
                         onClick={onRecalculatePath}
                         className="rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-3 text-xs tracking-[0.2em] text-amber-200"
                     >
-                        RECALCULATE PATH
+                        ROTA YENİDEN HESAPLA
                     </motion.button>
 
                     <motion.button
@@ -159,7 +165,7 @@ export default function ControlSidebar({
                         onClick={onToggleGrid}
                         className="rounded-xl border border-cyan-400/45 bg-cyan-500/15 px-4 py-3 text-xs tracking-[0.2em] text-cyan-100"
                     >
-                        TOGGLE GRID {isGridEnabled ? 'ON' : 'OFF'}
+                        GRID {isGridEnabled ? 'AÇIK' : 'KAPALI'}
                     </motion.button>
                 </footer>
             </motion.aside>
