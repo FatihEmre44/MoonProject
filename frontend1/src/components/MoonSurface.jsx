@@ -29,16 +29,37 @@ export default function MoonSurface({
     const [cr, cg, cb] = profile.colorBase
     const range = profile.colorRange
 
+    const mapRadius = planeSize * 0.5
+    const fadeStart = planeSize * 0.28
+
     for (let i = 0; i < pos.count; i++) {
       const lx = pos.getX(i)
       const ly = pos.getY(i)
-      const h = getTerrainHeight(lx, -ly, selectedMap)
+      
+      // Kenardan uzakligi hesapla ve edge factor belirle
+      const dist = Math.hypot(lx, ly)
+      const edgeFactor = Math.max(
+        0,
+        Math.min(1, (dist - fadeStart) / (mapRadius - fadeStart))
+      )
+      
+      // Kenar yuksekligini dusur (crater rim efekti)
+      let h = getTerrainHeight(lx, -ly, selectedMap)
+      h = h * (1 - edgeFactor * 0.4) // Kenarlar %40 daha alçak
+      
       pos.setZ(i, h)
 
       const t = Math.max(0, Math.min(1, (h + 8) / 16))
-      colors[i * 3] = cr + t * range
-      colors[i * 3 + 1] = cg + t * range * 0.95
-      colors[i * 3 + 2] = cb + t * range * 1.05
+      const baseR = cr + t * range
+      const baseG = cg + t * range * 0.95
+      const baseB = cb + t * range * 1.05
+      
+      // Kenar karartilmasi guclendirme
+      const edgeDark = Math.max(0.15, 1 - edgeFactor * 0.85)
+
+      colors[i * 3] = baseR * edgeDark
+      colors[i * 3 + 1] = baseG * edgeDark
+      colors[i * 3 + 2] = baseB * edgeDark
     }
 
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
