@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Canvas } from '@react-three/fiber'
 import IntroScreen from './components/ui/IntroScreen'
 import MenuTrigger from './components/ui/MenuTrigger'
 import ControlSidebar from './components/ui/ControlSidebar'
-import ModelMap from './components/scene/ModelMap'
+import MoonSurface from './components/MoonSurface'
+import Lighting from './components/Lighting'
+import Stars from './components/Stars'
+import Rover from './components/Rover'
 
 const INITIAL_TELEMETRY = {
     speed: 1.85,
@@ -33,6 +37,17 @@ const missionMessages = [
     'Signal stable with relay node',
     'Thermal sensors nominal',
     'Subsurface scan complete',
+]
+
+const ROVER_PATH = [
+    [-50, 0, -60],
+    [-20, 0, -40],
+    [0, 0, -10],
+    [30, 0, 20],
+    [50, 0, 50],
+    [40, 0, 80],
+    [0, 0, 90],
+    [-40, 0, 70],
 ]
 
 function randomRange(min, max) {
@@ -121,16 +136,26 @@ export default function App() {
         <main className="relative h-screen w-screen overflow-hidden bg-obsidian text-cyan-50">
             <div className="absolute inset-0 lunar-background" aria-hidden="true" />
 
-            <section className="absolute inset-0 flex items-center justify-center p-6">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8 }}
-                    className="mission-stage h-full w-full"
-                >
-                    <ModelMap isGridEnabled={isGridEnabled} />
-                </motion.div>
-            </section>
+            <motion.section
+                initial={{ opacity: 0 }}
+                animate={isStarted ? { opacity: 1 } : { opacity: 0 }}
+                transition={{ duration: 0.6 }}
+                className="absolute inset-0"
+            >
+                {isStarted && (
+                    <Canvas
+                        camera={{ position: [0, 120, 120], fov: 55 }}
+                        style={{ width: '100%', height: '100%' }}
+                    >
+                        <Suspense fallback={null}>
+                            <Stars />
+                            <Lighting />
+                            <MoonSurface isGridEnabled={isGridEnabled} />
+                            <Rover path={ROVER_PATH} isPlaying={isStarted} speed={1} />
+                        </Suspense>
+                    </Canvas>
+                )}
+            </motion.section>
 
             <div className="pointer-events-none absolute inset-0 z-50">
                 <AnimatePresence mode="wait">
