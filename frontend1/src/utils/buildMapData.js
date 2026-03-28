@@ -18,6 +18,24 @@ import {
     buildLargeBoulderObstacles,
 } from './obstacleField.js';
 
+const MAP_GRID_TUNING = {
+    'low-crater': {
+        obstacleScale: 1.2,
+        slopeScale: 2.5,
+        maxObstacleRatio: 0.38,
+    },
+    'mid-crater': {
+        obstacleScale: 1.2,
+        slopeScale: 2.5,
+        maxObstacleRatio: 0.42,
+    },
+    'high-crater': {
+        obstacleScale: 0.95,
+        slopeScale: 2.0,
+        maxObstacleRatio: 0.36,
+    },
+};
+
 /**
  * Grid koordinatlarının sınır içinde olup olmadığını kontrol et.
  */
@@ -54,6 +72,41 @@ function paintCircleOnGrid(grid, centerRow, centerCol, radius, value) {
     }
 }
 
+function countObstacleCells(grid) {
+    let blocked = 0;
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            if (grid[row][col] === 1) blocked++;
+        }
+    }
+    return blocked;
+}
+
+function relaxObstacleDensity(grid, maxObstacleRatio) {
+    const totalCells = GRID_SIZE * GRID_SIZE;
+    let blocked = countObstacleCells(grid);
+    if (blocked / totalCells <= maxObstacleRatio) return;
+
+    const center = (GRID_SIZE - 1) / 2;
+    const candidates = [];
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            if (grid[row][col] !== 1) continue;
+            const distToCenter = Math.hypot(row - center, col - center);
+            candidates.push({ row, col, distToCenter });
+        }
+    }
+
+    // Once merkezdeki kritik engelleri koru, dis halkalari yumusat.
+    candidates.sort((a, b) => b.distToCenter - a.distToCenter);
+
+    for (const cell of candidates) {
+        if (blocked / totalCells <= maxObstacleRatio) break;
+        grid[cell.row][cell.col] = 2;
+        blocked--;
+    }
+}
+
 /**
  * 2D mapGrid oluştur: 200×200 array
  *   0 = Güvenli yol (default)
@@ -64,7 +117,13 @@ function paintCircleOnGrid(grid, centerRow, centerCol, radius, value) {
  * @param {Array} crateres - CRATERS array: [{ col, row, radius }, ...]
  * @returns {number[][]} 200×200 mapGrid
  */
-function buildMapGrid(craters, largeBoulders = []) {
+function buildMapGrid(craters, largeBoulders = [], options = {}) {
+    const {
+        obstacleScale = 1.2,
+        slopeScale = 2.5,
+        maxObstacleRatio = 0.42,
+    } = options;
+
     const grid = Array.from({ length: GRID_SIZE }, () =>
         Array.from({ length: GRID_SIZE }, () => 0)
     );
@@ -73,10 +132,10 @@ function buildMapGrid(craters, largeBoulders = []) {
     craters.forEach(({ col, row, radius }) => {
         // Krater etrafında engel/obstacle işaretle
         // radius'ün 1.5 katı içini engel olarak tut (daha güvenli)
-        const obstacleRadius = radius * 1.2;
+        const obstacleRadius = radius * obstacleScale;
 
         paintCircleOnGrid(grid, row, col, obstacleRadius, 1);
-        paintCircleOnGrid(grid, row, col, radius * 2.5, 2);
+        paintCircleOnGrid(grid, row, col, radius * slopeScale, 2);
     });
 
     // Sadece buyuk boulder'lar engel: kucuk taslardan gecise izin ver.
@@ -84,6 +143,8 @@ function buildMapGrid(craters, largeBoulders = []) {
         const [row, col] = worldToGridCoord(x, z);
         paintCircleOnGrid(grid, row, col, radius, 1);
     });
+
+    relaxObstacleDensity(grid, maxObstacleRatio);
 
     return grid;
 }
@@ -131,6 +192,7 @@ function buildCraterMap(craters) {
  */
 export function buildMapDataFromProfile(mapId = 'mid-crater') {
     const profile = getMapProfile(mapId);
+    const tuning = MAP_GRID_TUNING[mapId] || MAP_GRID_TUNING['mid-crater'];
 
     if (!profile || !profile.craters) {
         console.warn(`Profile "${mapId}" bulunamadı, default profile kullanılıyor`);
@@ -153,7 +215,7 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
         minBlockingScale: LARGE_BOULDER_BLOCK_SCALE,
     });
 
-    const mapGrid = buildMapGrid(craters2D, largeBoulders);
+    const mapGrid = buildMapGrid(craters2D, largeBoulders, tuning);
     const craterMap = buildCraterMap(craters2D);
 
     // Waypoints'i kullan (sampleData.js'den geliyor)

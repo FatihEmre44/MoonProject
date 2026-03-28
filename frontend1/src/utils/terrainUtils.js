@@ -67,6 +67,7 @@ const MAP_PROFILES = {
     ],
     colorBase: [0.28, 0.27, 0.26],
     colorRange: 0.12,
+    terrainSegments: 320,
     rockCount: 800,
     boulderCount: 40,
   },
@@ -95,6 +96,7 @@ const MAP_PROFILES = {
     ],
     colorBase: [0.30, 0.29, 0.28],
     colorRange: 0.16,
+    terrainSegments: 320,
     rockCount: 1800,
     boulderCount: 120,
   },
@@ -135,8 +137,10 @@ const MAP_PROFILES = {
     ],
     colorBase: [0.34, 0.32, 0.30],
     colorRange: 0.20,
-    rockCount: 3000,
-    boulderCount: 250,
+    // Cok yogun haritada cizimi kilitlememek icin geometri/cozum basitlestirilir.
+    terrainSegments: 220,
+    rockCount: 1800,
+    boulderCount: 140,
   },
 }
 

@@ -61,6 +61,7 @@ router.post('/plan-route', async (req, res) => {
         // ── Gemini AI Analiz Raporu ──────────────
         const aiReport = await generateMissionReport({
             batteryUsage: telemetry.batteryUsage,
+            batteryLevel: telemetry.batteryLevel,
             riskScore: telemetry.riskScore,
             stepCount: result.stats.stepCount,
             slopeCount: result.stats.slopeCount,
@@ -141,6 +142,7 @@ router.post('/plan-multi-route', async (req, res) => {
         // ── Gemini AI Analiz Raporu ──────────────
         const aiReport = await generateMissionReport({
             batteryUsage: telemetry.batteryUsage,
+            batteryLevel: telemetry.batteryLevel,
             riskScore: telemetry.riskScore,
             stepCount: result.stats.stepCount,
             slopeCount: result.stats.slopeCount,
