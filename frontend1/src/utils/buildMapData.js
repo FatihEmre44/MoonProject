@@ -60,7 +60,8 @@ function buildMapGrid(craters) {
                     grid[r][c] = 1;
                 }
                 // Krater kenarındaki eğim (slope): 2
-                else if (dist <= radius * 2.5) {
+                // Not: Bir hucre bir kez engel (1) olduysa daha sonra 2 ile ezilmemeli.
+                else if (dist <= radius * 2.5 && grid[r][c] !== 1) {
                     grid[r][c] = 2;
                 }
             }
@@ -122,8 +123,9 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
     // 3D craters (wx, wz, r) → 2D craters (col, row, radius)
     const craters2D = profile.craters.map(({ wx, wz, r }) => {
         const center = (GRID_SIZE - 1) / 2;
-        const col = Math.round(wx + center);
-        const row = Math.round(wz + center);
+        // Krater merkezini float koruyarak world->grid kuantalama kaymasini azalt.
+        const col = wx + center;
+        const row = wz + center;
         return { col, row, radius: r };
     });
 
