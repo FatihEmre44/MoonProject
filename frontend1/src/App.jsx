@@ -60,7 +60,7 @@ function randomRange(min, max) {
 function CameraController({ roverPosition, isRoverFocused }) {
     const { camera } = useThree()
     const controlsRef = useRef()
-    const wasFocusedLastFrame = useRef(isRoverFocused)
+    const isFirstFocusFrame = useRef(true)
     const shouldResetToOverview = useRef(false)
 
     const mapPosition = useMemo(() => new THREE.Vector3(0, 150, 150), [])
@@ -69,33 +69,40 @@ function CameraController({ roverPosition, isRoverFocused }) {
     const targetPosition = useMemo(() => new THREE.Vector3(), [])
     const targetLookAt = useMemo(() => new THREE.Vector3(), [])
 
-    // Catch the transition from focused to unfocused
-    if (wasFocusedLastFrame.current && !isRoverFocused) {
-        shouldResetToOverview.current = true
-    }
-    wasFocusedLastFrame.current = isRoverFocused
-
-    useFrame(() => {
+    useFrame((state, delta) => {
         if (isRoverFocused) {
-            targetPosition.set(roverPosition[0] + 10, roverPosition[1] + 6, roverPosition[2] + 10)
+            // Update the OrbitControls target to follow the rover every frame
             targetLookAt.set(roverPosition[0], roverPosition[1] + 1.1, roverPosition[2])
-            
-            camera.position.lerp(targetPosition, 0.08)
             if (controlsRef.current) {
-                controlsRef.current.target.lerp(targetLookAt, 0.08)
+                controlsRef.current.target.lerp(targetLookAt, 0.1)
             }
-            // Ensure we trigger a reset next time we exit focus mode
+
+            // Perform a smooth transition to the initial follow distance only on the first frame of focus
+            if (isFirstFocusFrame.current) {
+                targetPosition.set(roverPosition[0] + 12, roverPosition[1] + 8, roverPosition[2] + 12)
+                camera.position.lerp(targetPosition, 0.05)
+                if (camera.position.distanceTo(targetPosition) < 0.5) {
+                    isFirstFocusFrame.current = false
+                }
+            }
+            
+            // Flag that we'll need to reset to overview next time focus is toggled off
             shouldResetToOverview.current = true
-        } else if (shouldResetToOverview.current) {
-            // Smoothly move to overview position ONLY ONCE after focus is disabled
-            camera.position.lerp(mapPosition, 0.05)
-            if (controlsRef.current) {
-                controlsRef.current.target.lerp(mapLookAt, 0.05)
-            }
-            
-            // Stop fighting the user once we're reasonably close to the overview
-            if (camera.position.distanceTo(mapPosition) < 0.5) {
-                shouldResetToOverview.current = false
+        } else {
+            // Reset focus flag for the next time we enter focus mode
+            isFirstFocusFrame.current = true
+
+            if (shouldResetToOverview.current) {
+                // Smoothly move to overview position ONLY ONCE after focus is disabled
+                camera.position.lerp(mapPosition, 0.05)
+                if (controlsRef.current) {
+                    controlsRef.current.target.lerp(mapLookAt, 0.05)
+                }
+                
+                // Stop fighting the user once we're reasonably close to the overview
+                if (camera.position.distanceTo(mapPosition) < 0.5) {
+                    shouldResetToOverview.current = false
+                }
             }
         }
     })
@@ -111,7 +118,7 @@ function CameraController({ roverPosition, isRoverFocused }) {
             panSpeed={1.2}
             maxPolarAngle={Math.PI / 2 - 0.05}
             minDistance={5}
-            maxDistance={800}
+            maxDistance={1200}
         />
     )
 }
@@ -174,6 +181,7 @@ export default function App() {
     const [roverResetSignal, setRoverResetSignal] = useState(0)
     const [selectedTargetGrid, setSelectedTargetGrid] = useState(null)
     const [plannedRouteWorld, setPlannedRouteWorld] = useState([])
+    const [roverRouteIndex, setRoverRouteIndex] = useState(0)
     const [routeAnalysis, setRouteAnalysis] = useState(null)
     const [isExplainingRoute, setIsExplainingRoute] = useState(false)
 
@@ -386,6 +394,7 @@ export default function App() {
         setSelectedMap('mid-crater')
         setSelectedTargetGrid(null)
         setPlannedRouteWorld([])
+        setRoverRouteIndex(0)
         setRouteAnalysis(null)
         setRoverResetSignal((prev) => prev + 1)
     }
@@ -423,7 +432,13 @@ export default function App() {
                                 onSelectTarget={handleTerrainTargetSelect}
                             />
                             {selectedTargetWorld && <TargetMarker position={selectedTargetWorld} />}
-                            <PathLine path={plannedRouteWorld} currentStep={0} />
+                            {plannedRouteWorld.length > 0 && (
+                                <PathLine 
+                                    path={plannedRouteWorld} 
+                                    currentStep={roverRouteIndex} 
+                                    selectedMap={selectedMap}
+                                />
+                            )}
                             <Rover
                                 initialPosition={roverStartPosition}
                                 rotationY={Math.PI}
@@ -432,6 +447,7 @@ export default function App() {
                                 routePoints={plannedRouteWorld}
                                 resetSignal={roverResetSignal}
                                 onPositionChange={setRoverLivePosition}
+                                onStepChange={setRoverRouteIndex}
                                 onRouteComplete={() => {
                                     setIsRoverMoving(false)
                                     setLogs((prev) => [
