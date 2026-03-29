@@ -64,11 +64,12 @@ function randomRange(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-function CameraController({ roverPosition, isRoverFocused }) {
+function CameraController({ roverPosition, isRoverFocused, isRoverMoving }) {
   const { camera } = useThree();
   const controlsRef = useRef();
   const isFirstFocusFrame = useRef(true);
   const shouldResetToOverview = useRef(false);
+  const lastRoverMoving = useRef(false);
 
   const mapPosition = useMemo(() => new THREE.Vector3(0, 150, 150), []);
   const mapLookAt = useMemo(() => new THREE.Vector3(0, 0, 0), []);
@@ -77,44 +78,76 @@ function CameraController({ roverPosition, isRoverFocused }) {
   const targetLookAt = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((state, delta) => {
+    if (isRoverFocused && isRoverMoving && !lastRoverMoving.current) {
+      // Başlatıldığında close/serbest moduna kısa bir konumlandırma ver
+      isFirstFocusFrame.current = true;
+    }
+    lastRoverMoving.current = isRoverMoving;
+
     if (isRoverFocused) {
-      // Update the OrbitControls target to follow the rover every frame
       targetLookAt.set(
         roverPosition[0],
         roverPosition[1] + 1.1,
         roverPosition[2],
       );
-      if (controlsRef.current) {
-        controlsRef.current.target.lerp(targetLookAt, 0.1);
-      }
 
-      // Perform a smooth transition to the initial follow distance only on the first frame of focus
-      if (isFirstFocusFrame.current) {
-        targetPosition.set(
-          roverPosition[0] + 12,
-          roverPosition[1] + 8,
-          roverPosition[2] + 12,
-        );
-        camera.position.lerp(targetPosition, 0.05);
-        if (camera.position.distanceTo(targetPosition) < 0.5) {
-          isFirstFocusFrame.current = false;
+      if (isRoverMoving) {
+        // Rota yürütülürken, yakın ve serbest kamera modu
+        if (isFirstFocusFrame.current) {
+          targetPosition.set(
+            roverPosition[0] + 6,
+            roverPosition[1] + 4,
+            roverPosition[2] + 6,
+          );
+          camera.position.lerp(targetPosition, 0.05);
+          if (controlsRef.current) {
+            controlsRef.current.target.copy(targetLookAt);
+          }
+
+          if (camera.position.distanceTo(targetPosition) < 0.5) {
+            isFirstFocusFrame.current = false;
+          }
+        }
+
+        // Kullanıcı kontrolünü önceliklendir: otomatik hedef kilidini kapatıyoruz
+        if (controlsRef.current) {
+          controlsRef.current.enableDamping = true;
+          controlsRef.current.dampingFactor = 0.06;
+          controlsRef.current.enablePan = true;
+          controlsRef.current.enableRotate = true;
+          controlsRef.current.enableZoom = true;
+          controlsRef.current.screenSpacePanning = true;
+          controlsRef.current.zoomSpeed = 1.8;
+        }
+      } else {
+        // Duran rover için hedefe geri çekişli standart takip
+        if (controlsRef.current) {
+          controlsRef.current.target.lerp(targetLookAt, 0.1);
+        }
+
+        if (isFirstFocusFrame.current) {
+          targetPosition.set(
+            roverPosition[0] + 12,
+            roverPosition[1] + 8,
+            roverPosition[2] + 12,
+          );
+          camera.position.lerp(targetPosition, 0.05);
+          if (camera.position.distanceTo(targetPosition) < 0.5) {
+            isFirstFocusFrame.current = false;
+          }
         }
       }
 
-      // Flag that we'll need to reset to overview next time focus is toggled off
       shouldResetToOverview.current = true;
     } else {
-      // Reset focus flag for the next time we enter focus mode
       isFirstFocusFrame.current = true;
 
       if (shouldResetToOverview.current) {
-        // Smoothly move to overview position ONLY ONCE after focus is disabled
         camera.position.lerp(mapPosition, 0.05);
         if (controlsRef.current) {
           controlsRef.current.target.lerp(mapLookAt, 0.05);
         }
 
-        // Stop fighting the user once we're reasonably close to the overview
         if (camera.position.distanceTo(mapPosition) < 0.5) {
           shouldResetToOverview.current = false;
         }
@@ -512,7 +545,7 @@ export default function App() {
               }}
             />
             <Canvas
-              camera={{ position: [0, 150, 150], fov: 55, far: 3000 }}
+              camera={{ position: [0, 300, 300], fov: 55, far: 3000 }}
               style={{ width: "100%", height: "100%", background: "#000" }}
               onCreated={({ scene }) => {
                 scene.background = new THREE.Color("#000000");
@@ -571,6 +604,7 @@ export default function App() {
                 <CameraController
                   roverPosition={roverLivePosition}
                   isRoverFocused={isRoverFocused}
+                  isRoverMoving={isRoverMoving}
                 />
               </Suspense>
             </Canvas>
@@ -688,6 +722,7 @@ export default function App() {
                 onToggleRoverFocus={() => setIsRoverFocused((prev) => !prev)}
                 roverPath={plannedRouteWorld}
                 roverPosition={roverLivePosition}
+                zoom={selectedTargetGrid ? 2 : 1}
               />
 
               <RouteBot
