@@ -5,6 +5,7 @@
  *   0 → Güvenli yol (maliyet: 1)
  *   1 → Engel / krater (geçilemez)
  *   2 → Yokuş / zorlu arazi (maliyet: 5)
+ *   3 → Yüksek engebeli arazi (maliyet: 9)
  *
  * Özellikler:
  *   - 8 yönlü hareket (çapraz adımlarda maliyet × √2)
@@ -85,12 +86,13 @@ class MinHeap {
 
 /**
  * Verilen hücrenin temel geçiş maliyetini döndürür.
- * @param {number} cellValue - Hücre değeri (0, 1 veya 2)
- * @returns {number} Maliyet (1 = normal, 5 = yokuş, Infinity = engel)
+ * @param {number} cellValue - Hücre değeri (0, 1, 2 veya 3)
+ * @returns {number} Maliyet (1 = normal, 5 = yokuş, 9 = engebeli, Infinity = engel)
  */
 function getBaseCost(cellValue) {
   if (cellValue === 1) return Infinity; // Engel / krater
   if (cellValue === 2) return 5;        // Yokuş / zorlu arazi
+  if (cellValue === 3) return 9;        // Yuksek engebeli arazi
   return 1;                              // Güvenli yol
 }
 
@@ -143,7 +145,9 @@ function getRiskPenalty(grid, craterMap, r, c) {
 
   let obstacleCount = 0;
   let slopeCount = 0;
+  let ruggedCount = 0;
   const isTargetSlope = grid[r][c] === 2;
+  const isTargetRugged = grid[r][c] === 3;
 
   for (const [dr, dc] of DIRECTIONS) {
     const nr = r + dr;
@@ -153,6 +157,8 @@ function getRiskPenalty(grid, craterMap, r, c) {
         obstacleCount++;
       } else if (grid[nr][nc] === 2) {
         slopeCount++;
+      } else if (grid[nr][nc] === 3) {
+        ruggedCount++;
       }
     }
   }
@@ -165,6 +171,11 @@ function getRiskPenalty(grid, craterMap, r, c) {
     penalty += slopeCount * 1.0;
   }
 
+  // 2b. Yuksek engebeli hucrelerde ek risk cezasi
+  if (isTargetRugged) {
+    penalty += 4 + ruggedCount * 1.4 + slopeCount * 0.8;
+  }
+
   // 3. Kural: craterMap üzerinden Gerçekçi Krater Modellemesi
   if (craterMap && typeof craterMap === 'object') {
     for (const key in craterMap) {
@@ -174,18 +185,23 @@ function getRiskPenalty(grid, craterMap, r, c) {
 
       // Euclidean uzaklık: Pisagor
       const dist = Math.sqrt(Math.pow(r - cr, 2) + Math.pow(c - cc, 2));
+      const chebyshevDist = Math.max(Math.abs(r - cr), Math.abs(c - cc));
 
-      // Etki alanı içerisindeyse (1 - dist/radius)
-      if (dist <= radius) {
-        // Derinlik bazlı taban ceza
-        const basePenalty = depth > 100 ? 8 : 2;
-        penalty += basePenalty * (1 - dist / radius);
+      // Kenar egimi cezasi: test ve fizik model beklentisi geregi tam +3.
+      if (chebyshevDist === 1) {
+        penalty += 3;
+        continue;
       }
 
-      // Kenar eğimi kuralı: Chebyshev (8-yönlü komşuluk) mesafesi tam 1 ise (kratere yapışıksa)
-      const chebyshevDist = Math.max(Math.abs(r - cr), Math.abs(c - cc));
-      if (chebyshevDist === 1) {
-        penalty += 3; // Kenar eğimi zorluğu
+      // Ic bolgeye sert ceza, kenara yakin bolgeye yumusak ceza ver.
+      // Boylece yol kraterin kenarindan gecebilir ama iceri dusmeye zorlanmaz.
+      if (dist <= radius * 0.55) {
+        const t = 1 - dist / (radius * 0.55);
+        const innerPenalty = depth > 100 ? 12 : 7;
+        penalty += innerPenalty * (0.35 + t * t * 0.65);
+      } else if (dist <= radius * 1.05) {
+        const rimT = 1 - (dist - radius * 0.55) / (radius * 0.5);
+        penalty += Math.max(0, rimT) * 1.2;
       }
     }
   }
@@ -201,7 +217,7 @@ function getRiskPenalty(grid, craterMap, r, c) {
  * A* algoritması ile grid üzerinde iki nokta arası en güvenli yolu bulur.
  * 8 yönlü hareket destekler, çapraz adımlarda maliyet × √2 uygulanır.
  *
- * @param {number[][]} grid  - 2D grid (0 = güvenli, 1 = engel, 2 = yokuş)
+ * @param {number[][]} grid  - 2D grid (0 = güvenli, 1 = engel, 2 = yokuş, 3 = yüksek engebeli)
  * @param {Object}     craterMap - Krater objesi
  * @param {number[]}   start - Başlangıç [satır, sütun]
  * @param {number[]}   end   - Hedef [satır, sütun]
@@ -426,6 +442,7 @@ function reconstructPath(cameFrom, grid, gScore, endRow, endCol) {
   // İstatistikleri hesapla
   let slopeCount = 0;
   let flatCount = 0;
+  let ruggedCount = 0;
   let diagonalCount = 0;
 
   for (let i = 1; i < path.length; i++) {
@@ -440,6 +457,8 @@ function reconstructPath(cameFrom, grid, gScore, endRow, endCol) {
     // Arazi tipi
     if (grid[r][c] === 2) {
       slopeCount++;
+    } else if (grid[r][c] === 3) {
+      ruggedCount++;
     } else {
       flatCount++;
     }
@@ -451,6 +470,7 @@ function reconstructPath(cameFrom, grid, gScore, endRow, endCol) {
     stats: {
       stepCount: path.length - 1,
       slopeCount,
+      ruggedCount,
       flatCount,
       diagonalCount,
     },

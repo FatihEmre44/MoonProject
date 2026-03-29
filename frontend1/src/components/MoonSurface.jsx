@@ -43,9 +43,15 @@ export default function MoonSurface({
         Math.min(1, (dist - fadeStart) / (mapRadius - fadeStart))
       )
 
-      // Kenar yuksekligini dusur (crater rim efekti)
-      let h = getTerrainHeight(lx, -ly, selectedMap)
-      h = h * (1 - edgeFactor * 0.4) // Kenarlar %40 daha alçak
+      const nx = Math.abs(lx) / mapRadius
+      const ny = Math.abs(ly) / mapRadius
+      const squareN = Math.max(nx, ny)
+      const cornerN = Math.min(1, Math.hypot(nx, ny) / Math.SQRT2)
+      const edgeFold = Math.max(0, Math.min(1, (squareN - 0.64) / 0.36))
+      const cornerFold = Math.max(0, Math.min(1, (cornerN - 0.7) / 0.3))
+      
+      // Yukseklik terrain fonksiyonundan gelir (kuresel egim + yerel engebeler dahil).
+      const h = getTerrainHeight(lx, -ly, selectedMap)
 
       pos.setZ(i, h)
 
@@ -55,7 +61,10 @@ export default function MoonSurface({
       const baseB = cb + t * range * 1.05
 
       // Kenar karartilmasi guclendirme
-      const edgeDark = Math.max(0.15, 1 - edgeFactor * 0.85)
+      const edgeDark = Math.max(
+        0.03,
+        1 - edgeFactor * 0.65 - edgeFold * 0.72 - cornerFold * 0.95,
+      )
 
       colors[i * 3] = baseR * edgeDark
       colors[i * 3 + 1] = baseG * edgeDark
@@ -90,6 +99,7 @@ export default function MoonSurface({
       </mesh>
 
       {isGridEnabled && <SparseGrid size={planeSize} spacing={15} />}
+      <CircularVignette size={planeSize} />
 
       <Rocks count={profile.rockCount} spread={planeSize * ROCK_SPREAD_FACTOR} mapId={selectedMap} />
       <Boulders count={profile.boulderCount} spread={planeSize * BOULDER_SPREAD_FACTOR} mapId={selectedMap} />
@@ -100,10 +110,23 @@ export default function MoonSurface({
 function SparseGrid({ size, spacing = 15 }) {
   const lines = useMemo(() => {
     const half = size / 2
+    const radius = size * 0.47
     const pts = []
+
+    const safeRoot = (v) => Math.sqrt(Math.max(0, v))
+
     for (let i = -half; i <= half; i += spacing) {
-      pts.push(new THREE.Vector3(-half, 0.02, i), new THREE.Vector3(half, 0.02, i))
-      pts.push(new THREE.Vector3(i, 0.02, -half), new THREE.Vector3(i, 0.02, half))
+      // Dairesel clip: yatay grid cizgileri
+      if (Math.abs(i) <= radius) {
+        const xMax = safeRoot(radius * radius - i * i)
+        pts.push(new THREE.Vector3(-xMax, 0.02, i), new THREE.Vector3(xMax, 0.02, i))
+      }
+
+      // Dairesel clip: dikey grid cizgileri
+      if (Math.abs(i) <= radius) {
+        const zMax = safeRoot(radius * radius - i * i)
+        pts.push(new THREE.Vector3(i, 0.02, -zMax), new THREE.Vector3(i, 0.02, zMax))
+      }
     }
     return pts
   }, [size, spacing])
@@ -120,6 +143,18 @@ function SparseGrid({ size, spacing = 15 }) {
       </bufferGeometry>
       <lineBasicMaterial color="#00f2ff" transparent opacity={0.035} />
     </lineSegments>
+  )
+}
+
+function CircularVignette({ size }) {
+  const innerRadius = size * 0.38
+  const outerRadius = size * 0.9
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} raycast={() => null}>
+      <ringGeometry args={[innerRadius, outerRadius, 96]} />
+      <meshBasicMaterial color="#000000" transparent opacity={0.62} side={THREE.DoubleSide} depthWrite={false} />
+    </mesh>
   )
 }
 

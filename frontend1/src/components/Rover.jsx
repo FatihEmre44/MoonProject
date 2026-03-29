@@ -108,6 +108,17 @@ export default function Rover({
 
     const smoothStep = (from, to, amt) => from + (to - from) * amt;
 
+    // Rover yerel egime gore hizini adapte eder.
+    const terrainForward = getTerrainHeight(motion.x, motion.z - 0.65, mapId);
+    const terrainRear = getTerrainHeight(motion.x, motion.z + 0.65, mapId);
+    const terrainRight = getTerrainHeight(motion.x + 0.6, motion.z, mapId);
+    const terrainLeft = getTerrainHeight(motion.x - 0.6, motion.z, mapId);
+    const localRoughness = Math.max(
+      Math.abs(terrainForward - terrainRear),
+      Math.abs(terrainRight - terrainLeft),
+    );
+    const terrainSpeedFactor = Math.max(0.35, 1 - localRoughness * 0.55);
+
     if (isPlaying) {
       if (hasRoute) {
         const nextIndex = Math.min(
@@ -141,7 +152,7 @@ export default function Rover({
           }
         }
 
-        const step = Math.min(ROUTE_SPEED * delta, dist);
+        const step = Math.min(ROUTE_SPEED * terrainSpeedFactor * delta, dist);
         const desiredX = motion.x + (dx / dist) * step;
         const desiredZ = motion.z + (dz / dist) * step;
 
@@ -154,7 +165,7 @@ export default function Rover({
           onStepChange?.(motion.routeIndex);
         }
       } else {
-        const desiredZ = motion.z - FORWARD_SPEED * delta;
+        const desiredZ = motion.z - FORWARD_SPEED * terrainSpeedFactor * delta;
         motion.z = smoothStep(motion.z, desiredZ, 0.18);
       }
     }

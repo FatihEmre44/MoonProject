@@ -10,7 +10,7 @@
  */
 
 import { GRID_SIZE, CRATERS, WAYPOINTS } from './sampleData.js';
-import { getMapProfile } from './terrainUtils.js';
+import { getMapProfile, getTerrainHeight } from './terrainUtils.js';
 import {
     TERRAIN_PLANE_SIZE,
     BOULDER_SPREAD_FACTOR,
@@ -23,16 +23,25 @@ const MAP_GRID_TUNING = {
         obstacleScale: 1.2,
         slopeScale: 2.5,
         maxObstacleRatio: 0.38,
+        ruggedSlopeThreshold: 0.22,
+        extremeSlopeThreshold: 0.38,
+        maxExtremeRatio: 0.06,
     },
     'mid-crater': {
         obstacleScale: 1.2,
         slopeScale: 2.5,
         maxObstacleRatio: 0.42,
+        ruggedSlopeThreshold: 0.18,
+        extremeSlopeThreshold: 0.32,
+        maxExtremeRatio: 0.09,
     },
     'high-crater': {
         obstacleScale: 0.95,
         slopeScale: 2.0,
         maxObstacleRatio: 0.36,
+        ruggedSlopeThreshold: 0.13,
+        extremeSlopeThreshold: 0.23,
+        maxExtremeRatio: 0.12,
     },
 };
 
@@ -82,6 +91,16 @@ function countObstacleCells(grid) {
     return blocked;
 }
 
+function countCellsByValue(grid, value) {
+    let count = 0;
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            if (grid[row][col] === value) count++;
+        }
+    }
+    return count;
+}
+
 function relaxObstacleDensity(grid, maxObstacleRatio) {
     const totalCells = GRID_SIZE * GRID_SIZE;
     let blocked = countObstacleCells(grid);
@@ -107,6 +126,79 @@ function relaxObstacleDensity(grid, maxObstacleRatio) {
     }
 }
 
+function addRuggedTerrainLayer(grid, mapId, options = {}) {
+    const {
+        ruggedSlopeThreshold = 0.35,
+        extremeSlopeThreshold = 0.6,
+        maxExtremeRatio = 0.1,
+    } = options;
+
+    const center = (GRID_SIZE - 1) / 2;
+    const sampleOffset = 0.8;
+
+    // 0 = guvenli, 1 = engel, 2 = zorlu egim, 3 = yuksek engebeli alan
+    for (let row = 1; row < GRID_SIZE - 1; row++) {
+        for (let col = 1; col < GRID_SIZE - 1; col++) {
+            if (grid[row][col] === 1) continue;
+
+            const worldX = col - center;
+            const worldZ = row - center;
+
+            const hCenter = getTerrainHeight(worldX, worldZ, mapId);
+            const hX = getTerrainHeight(worldX + sampleOffset, worldZ, mapId);
+            const hZ = getTerrainHeight(worldX, worldZ + sampleOffset, mapId);
+            const hXNeg = getTerrainHeight(worldX - sampleOffset, worldZ, mapId);
+            const hZNeg = getTerrainHeight(worldX, worldZ - sampleOffset, mapId);
+            const hDiag = getTerrainHeight(worldX + sampleOffset, worldZ + sampleOffset, mapId);
+
+            const slopeMetric = Math.max(
+                Math.abs(hX - hCenter),
+                Math.abs(hZ - hCenter),
+                Math.abs(hXNeg - hCenter),
+                Math.abs(hZNeg - hCenter),
+            );
+
+            const roughnessMetric = (
+                Math.abs(hX - hCenter) +
+                Math.abs(hZ - hCenter) +
+                Math.abs(hXNeg - hCenter) +
+                Math.abs(hZNeg - hCenter) +
+                Math.abs(hDiag - hCenter)
+            ) / 5;
+
+            const terrainMetric = slopeMetric * 0.72 + roughnessMetric * 0.58;
+
+            if (terrainMetric >= extremeSlopeThreshold) {
+                grid[row][col] = 3;
+            } else if (terrainMetric >= ruggedSlopeThreshold && grid[row][col] === 0) {
+                grid[row][col] = 2;
+            }
+        }
+    }
+
+    // Asiri engebeli hucreler cok yogunsa bir kismini zorlu egime indir.
+    const totalCells = GRID_SIZE * GRID_SIZE;
+    let extremeCount = countCellsByValue(grid, 3);
+    if (extremeCount / totalCells <= maxExtremeRatio) return;
+
+    const candidates = [];
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            if (grid[row][col] !== 3) continue;
+            const distToCenter = Math.hypot(row - center, col - center);
+            candidates.push({ row, col, distToCenter });
+        }
+    }
+
+    candidates.sort((a, b) => b.distToCenter - a.distToCenter);
+
+    for (const cell of candidates) {
+        if (extremeCount / totalCells <= maxExtremeRatio) break;
+        grid[cell.row][cell.col] = 2;
+        extremeCount--;
+    }
+}
+
 /**
  * 2D mapGrid oluştur: 200×200 array
  *   0 = Güvenli yol (default)
@@ -122,6 +214,10 @@ function buildMapGrid(craters, largeBoulders = [], options = {}) {
         obstacleScale = 1.2,
         slopeScale = 2.5,
         maxObstacleRatio = 0.42,
+        mapId = 'mid-crater',
+        ruggedSlopeThreshold = 0.35,
+        extremeSlopeThreshold = 0.6,
+        maxExtremeRatio = 0.1,
     } = options;
 
     const grid = Array.from({ length: GRID_SIZE }, () =>
@@ -145,6 +241,11 @@ function buildMapGrid(craters, largeBoulders = [], options = {}) {
     });
 
     relaxObstacleDensity(grid, maxObstacleRatio);
+    addRuggedTerrainLayer(grid, mapId, {
+        ruggedSlopeThreshold,
+        extremeSlopeThreshold,
+        maxExtremeRatio,
+    });
 
     return grid;
 }
@@ -215,8 +316,14 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
         minBlockingScale: LARGE_BOULDER_BLOCK_SCALE,
     });
 
-    const mapGrid = buildMapGrid(craters2D, largeBoulders, tuning);
+    const mapGrid = buildMapGrid(craters2D, largeBoulders, {
+        ...tuning,
+        mapId,
+    });
     const craterMap = buildCraterMap(craters2D);
+
+    const ruggedCellCount = countCellsByValue(mapGrid, 3);
+    const slopeCellCount = countCellsByValue(mapGrid, 2);
 
     // Waypoints'i kullan (sampleData.js'den geliyor)
     const waypoints = WAYPOINTS || [[0, 0], [100, 100]];
@@ -229,6 +336,8 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
             gridSize: GRID_SIZE,
             craterCount: craters2D.length,
             largeBoulderCount: largeBoulders.length,
+            ruggedCellCount,
+            slopeCellCount,
             mapProfile: mapId,
         },
     };
