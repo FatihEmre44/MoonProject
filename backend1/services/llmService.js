@@ -9,12 +9,7 @@ function buildDeterministicReport(data = {}) {
   const routeContext = data.routeContext || {};
   const astar = routeContext.astarMetrics || {};
   const crater = routeContext.craterSummary || {};
-  const boulder = routeContext.boulderSummary || {};
   const exposure = routeContext.routeExposure || {};
-
-  if (!routeContext.astarMetrics) {
-    return 'Rota analizi uretilemedi: A* baglam verisi eksik.';
-  }
 
   const batteryLevel = data.batteryLevel || 'Bilinmiyor';
   const riskScore = data.riskScore || 'Bilinmiyor';
@@ -22,25 +17,28 @@ function buildDeterministicReport(data = {}) {
   const stepCount = Number(astar.stepCount || 0);
   const totalCost = Number(astar.totalCost || 0);
   const averageCostPerStep = Number(astar.averageCostPerStep || 0);
-  const slopeCount = Number(astar.slopeCount || 0);
-  const ruggedCount = Number(astar.ruggedCount || 0);
-
   const craterCount = Number(crater.routeNearbyCount || 0);
-  const craterAstarCount = Number(crater.astarInfluenceCount || 0);
-  const craterAvgRadius = Number(crater.averageRadius || 0);
-  const craterAvgDepth = Number(crater.averageDepth || 0);
-
-  const boulderCount = Number(boulder.routeNearbyCount || 0);
-  const boulderAvgRadius = Number(boulder.averageRadius || 0);
-
   const nearObstacleRatio = Number(exposure.nearObstacleRatio || 0);
 
-  return [
-    `Rota A* tarafinda toplam maliyet ${totalCost} ve ${stepCount} adim ile secildi; adim basi maliyet ${averageCostPerStep}, egim adimi ${slopeCount}, yuksek engebeli adim ${ruggedCount}.`,
-    `Obruk analizi: rota koridoru yakininda ${craterCount} obruk var (boyut dagilimi: ${formatBreakdownLabel(crater.sizeBreakdown)}), bunlardan ${craterAstarCount} tanesi A* risk cezasina dogrudan giriyor; ortalama yaricap ${craterAvgRadius}, ortalama derinlik ${craterAvgDepth}.`,
-    `Kaya analizi: rota koridoru yakininda ${boulderCount} kaya var (boyut dagilimi: ${formatBreakdownLabel(boulder.sizeBreakdown)}), ortalama yaricap ${boulderAvgRadius}.`,
-    `Engel yakinligi orani ${nearObstacleRatio}; toplam risk seviyesi ${riskScore}, batarya seviyesi ${batteryLevel}.`,
-  ].join(' ');
+  // Veri eksikse haber ver
+  if (!stepCount || totalCost === 0) {
+    return 'Rota analiz verisi henüz yükleniyor veya ruta bulunamadı. Lütfen hedef seçip tekrar deneyin.';
+  }
+
+  // Kısa (3-4 cümle) ve öz rapor
+  const lines = [
+    `A* algoritması ${stepCount} adımda ${totalCost} maliyetli roTA buldu (ortalama adım maliyeti: ${averageCostPerStep.toFixed(1)}).`,
+    `Risk seviyesi "${riskScore}", batarya tüketimi "${batteryLevel}".`,
+    craterCount > 0 
+      ? `Rota yakında ${craterCount} obruk var ancak güvenli koridor seçildi.` 
+      : `Hedefe engelsiz şekilde ulaşmak mümkün.`
+  ];
+
+  if (nearObstacleRatio > 0.3) {
+    lines.push(`Dikkat: yolun %${(nearObstacleRatio * 100).toFixed(0)}'i engel yakının, dikkatle ilerlenmelidir.`);
+  }
+
+  return lines.join(' ');
 }
 
 /**
