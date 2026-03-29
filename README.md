@@ -6,7 +6,7 @@ MoonProject, Ay yüzeyinde otonom rover rotasını risk, enerji tüketimi ve ara
 
 - backend1/ : Node.js + Express API, A* rota hesaplama, telemetri, LLM tabanlı raporlama.
 - frontend1/ : Vite + React + Three.js tabanlı 3B Ay yüzeyi simülasyonu, HUD ve mini harita.
-- PROJE_SAYFASI.md : Proje açıklaması, teknik mimari, veri kaynakları ve referanslar.
+- SUNUM_SAYFASI.md : Proje açıklaması, teknik mimari, veri kaynakları ve referanslar.
 
 ## Teknolojiler
 
