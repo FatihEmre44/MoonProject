@@ -43,13 +43,6 @@ npm run dev
 - AI temelli görev raporları ve jürili teknik özet
 - Çizim: 2D/3D rotalar, ışıklandırma, kamera kontrol ve HUD
 
-## Katkı
+---------------------------------------------------------------------------------
 
-1. Depoyu fork edin
-2. Yeni bir branch oluşturun (örn. eat/path-optimization)
-3. Değişiklikleri commit edin
-4. Pull request oluşturun
-
-## Lisans
-
-Proje için uygun lisans seçin (örn. MIT veya Apache 2.0).
+Bu proje, 48 saatlik bir hackathon maratonu kapsamında sıfırdan geliştirilmiştir.
