@@ -285,6 +285,31 @@ function buildCraterMap(craters) {
     return craterMap;
 }
 
+function buildBoulderMap(largeBoulders = []) {
+    const boulderMap = [];
+
+    largeBoulders.forEach(({ x, z, radius }) => {
+        const [row, col] = worldToGridCoord(x, z);
+        if (!isValidGridCoord(row, col)) return;
+
+        let sizeClass = 'Kucuk';
+        if (radius >= 1.8) {
+            sizeClass = 'Buyuk';
+        } else if (radius >= 1.25) {
+            sizeClass = 'Orta';
+        }
+
+        boulderMap.push({
+            row,
+            col,
+            radius: parseFloat(radius.toFixed(2)),
+            sizeClass,
+        });
+    });
+
+    return boulderMap;
+}
+
 /**
  * 3D Harita Profili'nden (MAP_PROFILES'deki craters) mapData oluştur.
  * 
@@ -321,6 +346,7 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
         mapId,
     });
     const craterMap = buildCraterMap(craters2D);
+    const boulderMap = buildBoulderMap(largeBoulders);
 
     const ruggedCellCount = countCellsByValue(mapGrid, 3);
     const slopeCellCount = countCellsByValue(mapGrid, 2);
@@ -331,6 +357,7 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
     return {
         mapGrid,
         craterMap,
+        boulderMap,
         waypoints,
         metadata: {
             gridSize: GRID_SIZE,
@@ -351,11 +378,13 @@ export function buildMapDataFromProfile(mapId = 'mid-crater') {
 export function buildMapDataFromSampleData() {
     const mapGrid = buildMapGrid(CRATERS);
     const craterMap = buildCraterMap(CRATERS);
+    const boulderMap = [];
     const waypoints = WAYPOINTS || [[0, 0], [100, 100]];
 
     return {
         mapGrid,
         craterMap,
+        boulderMap,
         waypoints,
         metadata: {
             gridSize: GRID_SIZE,
@@ -375,7 +404,7 @@ export function buildMapDataFromSampleData() {
  * @param {number[]} targetNode - Hedef [row, col] (default: son waypoint)
  * @returns {Object} API request payload
  */
-export function createAstarRequest(mapGrid, craterMap, waypoints, startNode = null, targetNode = null) {
+export function createAstarRequest(mapGrid, craterMap, waypoints, startNode = null, targetNode = null, boulderMap = []) {
     if (!waypoints || waypoints.length < 2) {
         throw new Error('Minimum 2 waypoint gereklidir (başlangıç + hedef)');
     }
@@ -390,6 +419,7 @@ export function createAstarRequest(mapGrid, craterMap, waypoints, startNode = nu
             startNode: start,
             targetNode: target,
             craterMap,
+            boulderMap,
         };
     }
 
@@ -398,6 +428,7 @@ export function createAstarRequest(mapGrid, craterMap, waypoints, startNode = nu
         mapGrid,
         waypoints,
         craterMap,
+        boulderMap,
     };
 }
 
@@ -410,7 +441,7 @@ export function createAstarRequest(mapGrid, craterMap, waypoints, startNode = nu
  * @returns {Promise<Object>} API cevabı
  */
 export async function sendAstarRequest(mapData, apiBase = 'http://localhost:3000', useMultiRoute = false) {
-    const { mapGrid, craterMap, waypoints } = mapData;
+    const { mapGrid, craterMap, waypoints, boulderMap = [] } = mapData;
 
     let endpoint = useMultiRoute || waypoints.length > 2
         ? '/api/plan-multi-route'
@@ -422,9 +453,10 @@ export async function sendAstarRequest(mapData, apiBase = 'http://localhost:3000
             mapGrid,
             waypoints,
             craterMap,
+            boulderMap,
         };
     } else {
-        payload = createAstarRequest(mapGrid, craterMap, waypoints);
+        payload = createAstarRequest(mapGrid, craterMap, waypoints, null, null, boulderMap);
     }
 
     try {

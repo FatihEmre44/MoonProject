@@ -1,37 +1,46 @@
-import OpenAI from 'openai';
-import dotenv from 'dotenv';
-import path from 'path';
-
-// .env dosyasını tam yol vererek yükleyelim
-dotenv.config({ path: path.join(process.cwd(), '.env') });
-
-// OpenAI API Anahtarı ve Bağlantı Kontrolü
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-    console.warn("⚠️  UYARI: OPENAI_API_KEY .env dosyasında bulunamadı veya okunamadı!");
-} else {
-    console.log(`✅ OPENAI_API_KEY başarıyla yüklendi (Karakter sayısı: ${apiKey.length})`);
-    console.log("🚀 OpenAI Karar Destek Sistemi aktif.");
+function formatBreakdownLabel(breakdown = {}) {
+  const kucuk = Number(breakdown.kucuk || 0);
+  const orta = Number(breakdown.orta || 0);
+  const buyuk = Number(breakdown.buyuk || 0);
+  return `kucuk:${kucuk}, orta:${orta}, buyuk:${buyuk}`;
 }
 
-const openai = new OpenAI({
-  apiKey: apiKey,
-});
+function buildDeterministicReport(data = {}) {
+  const routeContext = data.routeContext || {};
+  const astar = routeContext.astarMetrics || {};
+  const crater = routeContext.craterSummary || {};
+  const boulder = routeContext.boulderSummary || {};
+  const exposure = routeContext.routeExposure || {};
 
-function sanitizeTelemetryForNarrative(telemetryData = {}) {
-  const narrativeData = { ...telemetryData };
-
-  // AI aciklamasinda ham yuzde yerine niteliksel ifade kullan.
-  if (narrativeData.batteryLevel) {
-    narrativeData.batteryUsage = narrativeData.batteryLevel;
+  if (!routeContext.astarMetrics) {
+    return 'Rota analizi uretilemedi: A* baglam verisi eksik.';
   }
 
-  if (typeof narrativeData.batteryUsage === 'string' && narrativeData.batteryUsage.includes('%')) {
-    narrativeData.batteryUsage = narrativeData.batteryLevel || 'Orta';
-  }
+  const batteryLevel = data.batteryLevel || 'Bilinmiyor';
+  const riskScore = data.riskScore || 'Bilinmiyor';
 
-  delete narrativeData.batteryPercent;
-  return narrativeData;
+  const stepCount = Number(astar.stepCount || 0);
+  const totalCost = Number(astar.totalCost || 0);
+  const averageCostPerStep = Number(astar.averageCostPerStep || 0);
+  const slopeCount = Number(astar.slopeCount || 0);
+  const ruggedCount = Number(astar.ruggedCount || 0);
+
+  const craterCount = Number(crater.routeNearbyCount || 0);
+  const craterAstarCount = Number(crater.astarInfluenceCount || 0);
+  const craterAvgRadius = Number(crater.averageRadius || 0);
+  const craterAvgDepth = Number(crater.averageDepth || 0);
+
+  const boulderCount = Number(boulder.routeNearbyCount || 0);
+  const boulderAvgRadius = Number(boulder.averageRadius || 0);
+
+  const nearObstacleRatio = Number(exposure.nearObstacleRatio || 0);
+
+  return [
+    `Rota A* tarafinda toplam maliyet ${totalCost} ve ${stepCount} adim ile secildi; adim basi maliyet ${averageCostPerStep}, egim adimi ${slopeCount}, yuksek engebeli adim ${ruggedCount}.`,
+    `Obruk analizi: rota koridoru yakininda ${craterCount} obruk var (boyut dagilimi: ${formatBreakdownLabel(crater.sizeBreakdown)}), bunlardan ${craterAstarCount} tanesi A* risk cezasina dogrudan giriyor; ortalama yaricap ${craterAvgRadius}, ortalama derinlik ${craterAvgDepth}.`,
+    `Kaya analizi: rota koridoru yakininda ${boulderCount} kaya var (boyut dagilimi: ${formatBreakdownLabel(boulder.sizeBreakdown)}), ortalama yaricap ${boulderAvgRadius}.`,
+    `Engel yakinligi orani ${nearObstacleRatio}; toplam risk seviyesi ${riskScore}, batarya seviyesi ${batteryLevel}.`,
+  ].join(' ');
 }
 
 /**
@@ -39,33 +48,5 @@ function sanitizeTelemetryForNarrative(telemetryData = {}) {
  * @param {Object} telemetryData - A* ve Telemetri fonksiyonundan gelen veriler
  */
 export async function generateMissionReport(telemetryData) {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY_MISSING");
-    }
-
-    const narrativeTelemetry = sanitizeTelemetryForNarrative(telemetryData);
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Hem çok ucuz hem de çok hızlı (Flash dengi)
-      messages: [
-        {
-          role: "system",
-          content: "Sen Türkiye Uzay Ajansı (TUA) Ay Araştırma Programı'nda (AYAP) görevli bir Kıdemli Navigasyon Mühendisisin. Görevin, otonom Rover'ın belirlediği rotayı teknik ve stratejik olarak onaylamaktır. Maksimum 2 cümlelik, profesyonel teknik analiz raporu üret. Batarya ifadesini sayısal yüzde ile değil niteliksel seviyelerle (Dusuk/Orta/Yuksek/Cok Yuksek/Asiri Yuksek) yaz. Markdown kullanma."
-        },
-        {
-          role: "user",
-          content: `Asagidaki telemetriyi analiz et. Batarya icin sayisal yuzde veya ham rakam verme; sadece niteliksel seviye kullan. Rotanin neden guvenli/optimum oldugunu acikla: ${JSON.stringify(narrativeTelemetry)}`
-        }
-      ],
-      max_tokens: 150,
-      temperature: 0.7
-    });
-
-    return completion.choices[0].message.content.trim();
-
-  } catch (error) {
-    console.error("❌ OpenAI API Hatası:", error.message);
-    return "TUA Sistem Analizi: LLM veri hattında gecikme yaşanıyor, ancak telemetri verileri otonom navigasyonun nominal sınırlarda olduğunu teyit ediyor.";
-  }
+  return buildDeterministicReport(telemetryData);
 }
